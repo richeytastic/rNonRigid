@@ -7,23 +7,25 @@ set(WITH_NANOFLANN TRUE)
 include( "cmake/FindLibs.cmake")
 
 set( INCLUDE_DIR "${PROJECT_SOURCE_DIR}/include")
+set( INCLUDE_F "${INCLUDE_DIR}/${PROJECT_NAME}")
 set( SRC_DIR "${PROJECT_SOURCE_DIR}/src")
 include_directories( ${INCLUDE_DIR})
+include_directories( ${INCLUDE_F})
 
 set( INCLUDE_FILES
-    "${INCLUDE_DIR}/rNonRigid.h"
-    "${INCLUDE_DIR}/Types.h"
-    "${INCLUDE_DIR}/InlierFinder.h"
-    "${INCLUDE_DIR}/FeaturesCalculate.h"
-    "${INCLUDE_DIR}/KDTree.h"
-    "${INCLUDE_DIR}/KNNCorresponder.h"
-    "${INCLUDE_DIR}/KNNMap.h"
-    "${INCLUDE_DIR}/NonRigidRegistration.h"
-    "${INCLUDE_DIR}/RigidRegistration.h"
-    "${INCLUDE_DIR}/RigidTransformer.h"
-    "${INCLUDE_DIR}/SmoothingWeights.h"
-    "${INCLUDE_DIR}/SymmetricCorresponder.h"
-    "${INCLUDE_DIR}/ViscoElasticTransformer.h"
+    "${INCLUDE_F}.h"
+    "${INCLUDE_F}/Types.h"
+    "${INCLUDE_F}/InlierFinder.h"
+    "${INCLUDE_F}/FeaturesCalculate.h"
+    "${INCLUDE_F}/KDTree.h"
+    "${INCLUDE_F}/KNNCorresponder.h"
+    "${INCLUDE_F}/KNNMap.h"
+    "${INCLUDE_F}/NonRigidRegistration.h"
+    "${INCLUDE_F}/RigidRegistration.h"
+    "${INCLUDE_F}/RigidTransformer.h"
+    "${INCLUDE_F}/SmoothingWeights.h"
+    "${INCLUDE_F}/SymmetricCorresponder.h"
+    "${INCLUDE_F}/ViscoElasticTransformer.h"
     )
 
 set( SRC_FILES

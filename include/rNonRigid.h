@@ -18,8 +18,8 @@
 #ifndef RNONRIGID_H
 #define RNONRIGID_H
 
-#include "Types.h"
-#include "RigidRegistration.h"
-#include "NonRigidRegistration.h"
+#include "rNonRigid/Types.h"
+#include "rNonRigid/RigidRegistration.h"
+#include "rNonRigid/NonRigidRegistration.h"
 
 #endif
