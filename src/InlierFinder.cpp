@@ -50,29 +50,29 @@ VecXf InlierFinder::operator()( const FeatMat &rfA, const FeatMat &rfB, const Fl
     for ( size_t i = 0; i < N; ++i)
         l2sqs[i] = (rfB.row(i) - rfA.row(i)).squaredNorm();
 
-    static const float G_CONST = 1.0f/sqrtf(2.0f * EIGEN_PI);
-    const float G_FACTOR = G_CONST * expf( -0.5f * _kappa * _kappa);
+    static const double G_CONST = 1.0/sqrt(2.0 * EIGEN_PI);
+    const double G_FACTOR = G_CONST * exp( -0.5 * _kappa * _kappa);
 
     // The number of iterations is given as a magic number of 10 in the MeshMonk implementation.
     // This value is not justified in the implementation or the supplementary material so is
     // included here as a parameter for testing.
     for ( size_t i = 0; i < _numIterations; ++i)
     {
-        const float sigDen = probs.sum();
+        const double sigDen = probs.sum();
         assert( sigDen > 0.0);
-        float sigNum = 0.0f;
+        double sigNum = 0.0;
         for ( size_t j = 0; j < N; ++j)
             sigNum += probs[j] * l2sqs[j];
 
-        const float sigma = std::max( _minSig, std::min( sqrtf( sigNum/sigDen), _maxSig));
-        const float lambda = G_FACTOR / sigma;
+        const double sigma = std::max<double>( _minSig, std::min<double>( sqrt( sigNum/sigDen), _maxSig));
+        const double lambda = G_FACTOR / sigma;
 
         // Recalc distance based probabilities
-        const float sigmaSq = sigma * sigma;
+        const double sigmaSq = sigma * sigma;
         for ( size_t j = 0; j < N; ++j)
         {
-            const float p = G_CONST * expf( -0.5f * l2sqs[j] / sigmaSq) / sigma;
-            probs[j] *= p / (p + lambda);
+            const double p = G_CONST * exp( -0.5 * l2sqs[j] / sigmaSq) / sigma;
+            probs[j] *= float(p / (p + lambda));
         }   // end for
     }   // end for
 
