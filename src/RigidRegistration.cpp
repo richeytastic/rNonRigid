@@ -18,10 +18,10 @@
 #include <RigidRegistration.h>
 #include <iostream>
 #include <ctime>
-using RNonRigid::RigidRegistration;
-using RNonRigid::Mat4f;
-using RNonRigid::FeatMat;
-using RNonRigid::FlagVec;
+using rNonRigid::RigidRegistration;
+using rNonRigid::Mat4f;
+using rNonRigid::FeatMat;
+using rNonRigid::FlagVec;
 
 RigidRegistration::RigidRegistration( size_t k, float flagThresh, bool eqPushPull,
                                       float kappa, bool useOrient, size_t numInlierIts,

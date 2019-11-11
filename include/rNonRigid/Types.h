@@ -22,7 +22,7 @@
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
 
-namespace RNonRigid {
+namespace rNonRigid {
 
 static const int NFEATURES = 6;
 

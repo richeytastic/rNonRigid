@@ -18,14 +18,14 @@
 #include <RigidTransformer.h>
 #include <iostream>
 #include <cassert>
-using RNonRigid::RigidTransformer;
-using RNonRigid::FeatMat;
-using RNonRigid::Vec3f;
-using RNonRigid::Vec4f;
-using RNonRigid::VecXf;
-using RNonRigid::Mat3f;
-using RNonRigid::Mat4f;
-using RNonRigid::MatXf;
+using rNonRigid::RigidTransformer;
+using rNonRigid::FeatMat;
+using rNonRigid::Vec3f;
+using rNonRigid::Vec4f;
+using rNonRigid::VecXf;
+using rNonRigid::Mat3f;
+using rNonRigid::Mat4f;
+using rNonRigid::MatXf;
 
 namespace {
 
@@ -168,7 +168,7 @@ Mat4f RigidTransformer::operator()( const FeatMat &flt, const FeatMat &crs, cons
 
 // Apply T to the features which should be 6 elements long (columns) in each row with the
 // first three elements giving a point's position, and the last three elements giving its normal.
-FeatMat RNonRigid::transformFeatures( const FeatMat& F, const Mat4f& T)
+FeatMat rNonRigid::transformFeatures( const FeatMat& F, const Mat4f& T)
 {
     assert( F.cols() == NFEATURES);
     const size_t N = F.rows();

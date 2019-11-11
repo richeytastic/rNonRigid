@@ -27,7 +27,7 @@
 #include "InlierFinder.h"
 #include "RigidTransformer.h"
 
-namespace RNonRigid {
+namespace rNonRigid {
 
 class rNonRigid_EXPORT RigidRegistration
 {

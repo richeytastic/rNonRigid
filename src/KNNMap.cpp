@@ -17,8 +17,8 @@
 
 #include <KNNMap.h>
 #include <KDTree.h>
-using RNonRigid::KNNMap;
-using RNonRigid::FeatMat;
+using rNonRigid::KNNMap;
+using rNonRigid::FeatMat;
 
 
 KNNMap::KNNMap( const FeatMat &qry, const FeatMat &tgt, size_t K)

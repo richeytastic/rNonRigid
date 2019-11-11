@@ -20,13 +20,13 @@
 #include <iostream>
 #include <cassert>
 #include <ctime>
-using RNonRigid::NonRigidRegistration;
-using RNonRigid::Mat4f;
-using RNonRigid::Vec3f;
-using RNonRigid::FeatMat;
-using RNonRigid::DispMat;
-using RNonRigid::FaceMat;
-using RNonRigid::FlagVec;
+using rNonRigid::NonRigidRegistration;
+using rNonRigid::Mat4f;
+using rNonRigid::Vec3f;
+using rNonRigid::FeatMat;
+using rNonRigid::DispMat;
+using rNonRigid::FaceMat;
+using rNonRigid::FlagVec;
 
 
 void NonRigidRegistration::updateFeatures( FeatMat &uF, const FaceMat& H, const DispMat &D)
@@ -84,7 +84,7 @@ NonRigidRegistration::NonRigidRegistration( size_t k, float flagThresh, bool eqP
 
 void NonRigidRegistration::operator()( FeatMat &uF, const FaceMat &H, const FlagVec &fF, const FeatMat &tgt, const FlagVec &tF) const
 {
-    //Profiling::Profiler profiler( "RNonRigid::NonRigidRegistration::operator()", false);
+    //Profiling::Profiler profiler( "rNonRigid::NonRigidRegistration::operator()", false);
 
     //profiler.startSplit("Initialise");
     const KNNMap kmap( uF, uF, _smoothK);

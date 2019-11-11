@@ -18,9 +18,9 @@
 #include <SmoothingWeights.h>
 #include <cassert>
 #include <cmath>
-using RNonRigid::SmoothingWeights;
-using RNonRigid::KNNMap;
-using RNonRigid::FlagVec;
+using rNonRigid::SmoothingWeights;
+using rNonRigid::KNNMap;
+using rNonRigid::FlagVec;
 
 
 SmoothingWeights::SmoothingWeights( const KNNMap &kmap, const FlagVec &flgs, float sigma)

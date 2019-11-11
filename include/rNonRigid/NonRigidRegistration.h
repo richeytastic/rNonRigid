@@ -27,7 +27,7 @@
 #include "ViscoElasticTransformer.h"
 //#include "/home/rich/dev/libs/Profiling.h"
 
-namespace RNonRigid {
+namespace rNonRigid {
 
 class rNonRigid_EXPORT NonRigidRegistration
 {

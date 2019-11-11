@@ -18,11 +18,11 @@
 #include <KDTree.h>
 #include <cassert>
 #include <nanoflann.hpp>
-using RNonRigid::KDTree;
-using RNonRigid::SurfacePoints;
-using RNonRigid::FeatMat;
-using RNonRigid::FeatVec;
-using RNonRigid::NFEATURES;
+using rNonRigid::KDTree;
+using rNonRigid::SurfacePoints;
+using rNonRigid::FeatMat;
+using rNonRigid::FeatVec;
+using rNonRigid::NFEATURES;
 
 
 namespace {

@@ -17,12 +17,12 @@
 
 #include <FeaturesCalculate.h>
 #include <cassert>
-using RNonRigid::FeatMat;
-using RNonRigid::FlagVec;
-using RNonRigid::SparseMat;
+using rNonRigid::FeatMat;
+using rNonRigid::FlagVec;
+using rNonRigid::SparseMat;
 
 
-FlagVec RNonRigid::calcFlags( const SparseMat& A, const FlagVec& I, float threshold)
+FlagVec rNonRigid::calcFlags( const SparseMat& A, const FlagVec& I, float threshold)
 {
     assert( threshold >= 0.0f);
     assert( threshold <= 1.0f);
@@ -35,4 +35,4 @@ FlagVec RNonRigid::calcFlags( const SparseMat& A, const FlagVec& I, float thresh
 
 
 
-FeatMat RNonRigid::calcFeatures( const SparseMat& A, const FeatMat& T) { return A * T;}
+FeatMat rNonRigid::calcFeatures( const SparseMat& A, const FeatMat& T) { return A * T;}

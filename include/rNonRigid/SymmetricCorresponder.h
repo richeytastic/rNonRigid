@@ -20,7 +20,7 @@
 
 #include "KNNCorresponder.h"
 
-namespace RNonRigid {
+namespace rNonRigid {
 
 class rNonRigid_EXPORT SymmetricCorresponder
 {

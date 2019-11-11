@@ -20,7 +20,7 @@
 
 #include "Types.h"
 
-namespace RNonRigid {
+namespace rNonRigid {
 
 // Calculates the weighted sum over the target points for new query points and returns as new features set with Q rows and X columns.
 // Affine matrix A has Q rows and T columns (Query points, Target points) and must be row normalised.

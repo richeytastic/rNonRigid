@@ -18,15 +18,15 @@
 #include <ViscoElasticTransformer.h>
 #include <iostream>
 #include <cassert>
-using RNonRigid::ViscoElasticTransformer;
-using RNonRigid::SmoothingWeights;
-using RNonRigid::FeatMat;
-using RNonRigid::DispMat;
-using RNonRigid::FlagVec;
-using RNonRigid::MatXf;
-using RNonRigid::MatXi;
-using RNonRigid::VecXf;
-using RNonRigid::Vec3f;
+using rNonRigid::ViscoElasticTransformer;
+using rNonRigid::SmoothingWeights;
+using rNonRigid::FeatMat;
+using rNonRigid::DispMat;
+using rNonRigid::FlagVec;
+using rNonRigid::MatXf;
+using rNonRigid::MatXi;
+using rNonRigid::VecXf;
+using rNonRigid::Vec3f;
 
 
 namespace {

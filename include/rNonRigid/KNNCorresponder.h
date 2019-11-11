@@ -25,7 +25,7 @@
  */
 #include "KDTree.h"
 
-namespace RNonRigid {
+namespace rNonRigid {
 
 class rNonRigid_EXPORT KNNCorresponder
 {

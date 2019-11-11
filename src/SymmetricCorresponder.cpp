@@ -18,11 +18,11 @@
 #include <SymmetricCorresponder.h>
 #include <FeaturesCalculate.h>
 #include <cassert>
-using RNonRigid::SymmetricCorresponder;
-using RNonRigid::KDTree;
-using RNonRigid::SparseMat;
-using RNonRigid::FeatMat;
-using RNonRigid::FlagVec;
+using rNonRigid::SymmetricCorresponder;
+using rNonRigid::KDTree;
+using rNonRigid::SparseMat;
+using rNonRigid::FeatMat;
+using rNonRigid::FlagVec;
 
 SymmetricCorresponder::SymmetricCorresponder( size_t k, float h, bool eqpp) : _k(k), _thresh(h), _eqpp(eqpp) {}
 

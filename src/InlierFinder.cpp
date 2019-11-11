@@ -19,10 +19,10 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
-using RNonRigid::InlierFinder;
-using RNonRigid::VecXf;
-using RNonRigid::FlagVec;
-using RNonRigid::FeatMat;
+using rNonRigid::InlierFinder;
+using rNonRigid::VecXf;
+using rNonRigid::FlagVec;
+using rNonRigid::FeatMat;
 
 
 InlierFinder::InlierFinder( float k, bool uo, size_t n)
@@ -89,7 +89,7 @@ VecXf InlierFinder::operator()( const FeatMat &rfA, const FeatMat &rfB, const Fl
 
         avgOrientationInlierWeight /= N;
         if ( avgOrientationInlierWeight < 0.5f)
-            std::cerr << "[WARNING] RNonRigid::InlierFinder: Very low inlier weights due to surface normals." << std::endl;
+            std::cerr << "[WARNING] rNonRigid::InlierFinder: Very low inlier weights due to surface normals." << std::endl;
     }   // end if
 
     return probs;

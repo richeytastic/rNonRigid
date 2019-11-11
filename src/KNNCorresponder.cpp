@@ -20,13 +20,13 @@
 #include <iostream>
 #include <cassert>
 #include <cmath>
-using RNonRigid::KNNCorresponder;
-using RNonRigid::KDTree;
-using RNonRigid::SparseMat;
-using RNonRigid::FeatMat;
+using rNonRigid::KNNCorresponder;
+using rNonRigid::KDTree;
+using rNonRigid::SparseMat;
+using rNonRigid::FeatMat;
 
 
-void RNonRigid::normaliseRows( SparseMat& m)
+void rNonRigid::normaliseRows( SparseMat& m)
 {
     const size_t N = m.rows();
     std::vector<float> rowSums( N, 0.0f);
