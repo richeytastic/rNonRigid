@@ -39,8 +39,8 @@ public:
     // kappa            : number of stddevs defining inlier range for discovered correspondences.
     // useOrient        : whether or not to use vertex normals when evaluating inlier correspondences.
     // numInlierIts     : number of iterations over which inlier probabilities are re-calculated.
-    // sigmaSmooth      : smoothing Gaussian width for the floating points.
     // smoothK          : number of vertex neighbours in the local smoothing region for each floating vertex.
+    // sigmaSmooth      : smoothing Gaussian width for the floating points.
     // numViscousStart  : starting number of viscous steps when beginning transform.
     // numViscousEnd    : final number of viscous steps when finishing transform.
     // numElasticStart  : starting number of elastic steps when beginning transform.
@@ -48,10 +48,10 @@ public:
     // numUpdateIts     : number of iterations of the update loop for recalculating/applying correspondences.
     NonRigidRegistration( size_t k=3, float flagThresh=0.9f, bool eqPushPull=false,
                           float kappa=4.0f, bool useOrient=true, size_t numInlierIts=10,
-                          size_t smoothK=10, float sigmaSmooth=3.0f,
+                          size_t smoothK=80, float sigmaSmooth=3.0f,
                           size_t numViscousStart=100, size_t numViscousEnd=1,
                           size_t numElasticStart=100, size_t numElasticEnd=1,
-                          size_t numUpdateIts=60);
+                          size_t numUpdateIts=200);
 
     // Find the non-rigid registration between F and T where points are stored row wise
     // with each row having 6 elements as X,Y,Z position and X,Y,Z normal.
