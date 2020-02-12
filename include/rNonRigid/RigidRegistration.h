@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,16 +45,12 @@ public:
                        float kappa=4.0f, bool useOrient=true, size_t numInlierIts=10, 
                        bool useScaling=true, size_t numUpdateIts=20);
 
-    // Find the rigid registration between F and T where points are stored row wise
-    // with each row having 6 elements as X,Y,Z position and X,Y,Z normal.
-    // On return, F is transformed from its input according to returned matrix.
+    // Find the rigid registration between mask and target.
+    // Returns the transformation matrix that should be applied to the mask.
     // Parameters:
-    // F            : the floating/mask set of points.
-    // T            : the target set of points.
-    // fF           : values of 1 or 0 denoting the points (rows) in F to use (size == rows in F)
-    // tT           : values of 1 or 0 denoting the points (rows) in T to use (size == rows in T)
-    // Returns the final transformation matrix that should be applied to F.
-    Mat4f operator()( FeatMat &F, const FlagVec &fF, const FeatMat &T, const FlagVec &fT) const;
+    // mask     : the floating mesh for which a transform to the target will be found.
+    // target   : the target mesh to which the mask will be registered.
+    Mat4f operator()( const Mesh &mask, const Mesh &target) const;
 
 private:
     const SymmetricCorresponder _corresponder;

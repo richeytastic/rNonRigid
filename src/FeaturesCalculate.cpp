@@ -32,7 +32,3 @@ FlagVec rNonRigid::calcFlags( const SparseMat& A, const FlagVec& I, float thresh
         F[i] = F[i] > threshold ? 1.0f : 0.0f;
     return F;
 }   // end calcFlags
-
-
-
-FeatMat rNonRigid::calcFeatures( const SparseMat& A, const FeatMat& T) { return A * T;}

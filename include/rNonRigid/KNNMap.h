@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,14 +26,14 @@
  * Find the nearest k points (rows) on the target matrix for every point (row)
  * in the query matrix. The target and query matrices can be the same.
  */
-#include "Types.h"
+#include "KDTree.h"
 
 namespace rNonRigid {
 
 class rNonRigid_EXPORT KNNMap
 {
 public:
-    KNNMap( const FeatMat &query, const FeatMat &target, size_t k);
+    KNNMap( const FeatMat &query, const KDTree &target, size_t k);
 
     const MatXi& indices() const { return _idxs;}
     const MatXf& sqDiffs() const { return _sqds;}

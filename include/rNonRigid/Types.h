@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,6 +22,11 @@
 #include <Eigen/Dense>
 #include <Eigen/SparseCore>
 
+#ifdef _WIN32
+// Disable warning about DLL linkage to Eigen library not being exported (it's header only).
+#pragma warning( disable : 4251)
+#endif
+
 namespace rNonRigid {
 
 static const int NFEATURES = 6;
@@ -29,6 +34,8 @@ static const int NFEATURES = 6;
 using FeatMat = Eigen::Matrix<float, Eigen::Dynamic, NFEATURES>; // N x 6 features matrix
 using FaceMat = Eigen::Matrix<int, Eigen::Dynamic, 3>;      // M x 3 integers giving vertices indices per face
 using DispMat = Eigen::Matrix<float, Eigen::Dynamic, 3>;    // Displacement field of vector deltas (xyz)
+using MatX3f = DispMat;
+
 using FeatVec = Eigen::Matrix<float, NFEATURES, 1>;         // A single feature in NFEATURES space
 using FlagVec = Eigen::VectorXf;                    // Dynamic length vector of floats with values either 1 or 0
 
@@ -41,6 +48,20 @@ using MatXf = Eigen::MatrixXf;                      // Dynamic size matrix of fl
 using MatXi = Eigen::MatrixXi;                      // Dynamic size matrix of integers
 
 using SparseMat = Eigen::SparseMatrix<float>;
+
+struct rNonRigid_EXPORT Mesh
+{
+    FeatMat features;   // Features (vertices and normals) per row
+    FaceMat topology;   // Face connectivity as row indices into features
+    FlagVec flags;      // Features (vertices) to use as 1's or 0's (flags.size() == features.rows())
+    void update( const DispMat&);   // Calls rNonRigid::updateFeatures
+};  // end Mesh
+
+/**
+ * Add DispMat to the first three columns (position) of FeatMat, then
+ * update vertex normals in last three columns using the topology.
+ */
+rNonRigid_EXPORT void updateFeatures( FeatMat&, const FaceMat&, const DispMat&);
 
 }   // end namespace
 

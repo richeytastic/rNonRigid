@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,12 +16,10 @@
  ************************************************************************/
 
 #include <RigidRegistration.h>
-#include <iostream>
-#include <ctime>
 using rNonRigid::RigidRegistration;
 using rNonRigid::Mat4f;
-using rNonRigid::FeatMat;
-using rNonRigid::FlagVec;
+using rNonRigid::Mesh;
+
 
 RigidRegistration::RigidRegistration( size_t k, float flagThresh, bool eqPushPull,
                                       float kappa, bool useOrient, size_t numInlierIts,
@@ -34,19 +32,23 @@ RigidRegistration::RigidRegistration( size_t k, float flagThresh, bool eqPushPul
 }   // end ctor
 
 
-Mat4f RigidRegistration::operator()( FeatMat &uF, const FlagVec &fFlags, const FeatMat &tgt, const FlagVec &tFlags) const
+Mat4f RigidRegistration::operator()( const Mesh &mask, const Mesh &target) const
 {
     Mat4f T = Mat4f::Identity();
-    const KDTree tkdt( tgt);
-    const FeatMat F = uF; // Const version of F for reliable (non-error propogating) iterative application of transform
+    const KDTree kdT( target.features);
+    FeatMat F = mask.features;
 
     for ( size_t i = 0; i < _numUpdateIts; ++i)
     {
-        FlagVec cFlags;
-        const FeatMat crs = _corresponder( uF, fFlags, tkdt, tFlags, cFlags); // Returns corresponding features on target
-        const VecXf wts = _inlierFinder( uF, crs, cFlags);          // Returns correspondence weightings
-        T = _transformer( uF, crs, wts) * T;                        // Update the transform
-        uF = transformFeatures( F, T);  // Note transform always from original F to avoid propogation of errors
+        const KDTree kdF( F);
+        FlagVec crsFlags;   // Corresponding target features
+        const FeatMat crs = _corresponder( kdF, mask.flags, kdT, target.flags, &crsFlags);
+
+        const VecXf wts = _inlierFinder( F, crs, crsFlags); // Correspondence weightings
+        T = _transformer( F, crs, wts) * T; // Update the transform
+
+        // Note transform always from original to reduce error propogation
+        F = transformFeatures( mask.features, T);
     }   // end for
 
     return T;

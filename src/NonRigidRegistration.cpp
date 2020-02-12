@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,52 +18,8 @@
 #include <NonRigidRegistration.h>
 #include <SmoothingWeights.h>
 #include <iostream>
-#include <cassert>
-#include <ctime>
 using rNonRigid::NonRigidRegistration;
-using rNonRigid::Mat4f;
-using rNonRigid::Vec3f;
-using rNonRigid::FeatMat;
-using rNonRigid::DispMat;
-using rNonRigid::FaceMat;
-using rNonRigid::FlagVec;
-
-
-void NonRigidRegistration::updateFeatures( FeatMat &uF, const FaceMat& H, const DispMat &D)
-{
-    // First update vertex positions (first three columns of uF) by adding the displacement map
-    const size_t N = uF.rows();
-    assert( int(N) == D.rows());
-    for ( size_t i = 0; i < N; ++i)
-    {
-        uF.block<1,3>(i,0) += D.row(i);
-        uF.block<1,3>(i,3) = Vec3f::Zero();  // Zero out the norms (recalculating)
-    }   // end for
-
-    // Then get the area weighted norms of the faces and add to all associated vertices
-    const size_t NF = H.rows();
-    for ( size_t i = 0; i < NF; ++i)
-    {
-        const Eigen::Vector3i vtxs = H.row(i); // Corresponding vertex rows for this face
-
-        // Get the corresponding updated positions
-        const Vec3f vA = uF.block<1,3>( vtxs[0], 0);
-        const Vec3f vB = uF.block<1,3>( vtxs[1], 0);
-        const Vec3f vC = uF.block<1,3>( vtxs[2], 0);
-
-        // Calculate the area weighted triangle norm
-        const Vec3f fnrm = (vB - vA).cross( vC - vB);  // DON'T NORMALISE (magnitude is twice triangle's area)
-
-        // Add back to the associated vertices
-        uF.block<1,3>(vtxs[0], 3) += fnrm;
-        uF.block<1,3>(vtxs[1], 3) += fnrm;
-        uF.block<1,3>(vtxs[2], 3) += fnrm;
-    }   // end for
-
-    // Finally renormalise the vertex normals.
-    for ( size_t i = 0; i < N; ++i)
-        uF.block<1,3>(i, 3).normalize();  // Normalise in place
-}   // end updateFeatures
+using rNonRigid::Mesh;
 
 
 NonRigidRegistration::NonRigidRegistration( size_t k, float flagThresh, bool eqPushPull,
@@ -82,31 +38,33 @@ NonRigidRegistration::NonRigidRegistration( size_t k, float flagThresh, bool eqP
 }   // end ctor
 
 
-void NonRigidRegistration::operator()( FeatMat &uF, const FaceMat &H, const FlagVec &fF, const FeatMat &tgt, const FlagVec &tF) const
+void NonRigidRegistration::operator()( Mesh &mask, const Mesh &target) const
 {
-    //Profiling::Profiler profiler( "rNonRigid::NonRigidRegistration::operator()", false);
+    const KDTree kdTreeTarget( target.features);
+    KDTree *kdTreeMask = new KDTree( mask.features);
 
-    //profiler.startSplit("Initialise");
-    const KNNMap kmap( uF, uF, _smoothK);
-    const SmoothingWeights smw( kmap, fF, _sigmaSmooth);
-    const KDTree tkdt( tgt);
-    //profiler.endSplit("Initialise");
+    const KNNMap kmap( mask.features, *kdTreeMask, _smoothK);
+    const SmoothingWeights smw( kmap, mask.flags, _sigmaSmooth);
 
     for ( size_t i = 0; i < _numUpdateIts; ++i)
     {
-        //profiler.startSplit("Correspondences");
-        FlagVec cFlags;
-        const FeatMat crs = _corresponder( uF, fF, tkdt, tF, cFlags);   // Returns corresponding features on target
-        //profiler.endSplit("Correspondences");
+        FlagVec crsFlags; // Return corresponding features on target
+        const FeatMat crs = _corresponder( *kdTreeMask, mask.flags, kdTreeTarget, target.flags, &crsFlags);
+        const VecXf iwts = _inlierFinder( mask.features, crs, crsFlags); // Correspondence weights
 
-        //profiler.startSplit("Inlier Finding");
-        const VecXf wts = _inlierFinder( uF, crs, cFlags);              // Returns correspondence weightings
-        //profiler.endSplit("Inlier Finding");
+        // Displacement field from current mask points to correspondence points on target
+        DispMat DF = crs.leftCols(3) - mask.features.leftCols(3);
 
-        //profiler.startSplit("Transforming");
-        const DispMat CF = crs.leftCols(3) - uF.leftCols(3);            // Raw force field from current floating to corresponding points
-        const DispMat D = _transformer.update( i, CF, smw, wts, fF);    // Calculate the displacement for this iteration
-        updateFeatures( uF, H, D);
-        //profiler.endSplit("Transforming");
+        // Apply visco-elastic steps to the deformation field
+        _transformer.update( i, DF, smw, iwts);
+        mask.update( DF);
+
+        if ( i < _numUpdateIts - 1)
+        {
+            delete kdTreeMask;
+            kdTreeMask = new KDTree( mask.features);    // Update for next _corresponder
+        }   // end if
     }   // end for
+
+    delete kdTreeMask;
 }   // end operator()

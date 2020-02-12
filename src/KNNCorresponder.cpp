@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,9 +17,7 @@
 
 #include <KNNCorresponder.h>
 #include <vector>
-#include <iostream>
 #include <cassert>
-#include <cmath>
 using rNonRigid::KNNCorresponder;
 using rNonRigid::KDTree;
 using rNonRigid::SparseMat;
@@ -67,7 +65,7 @@ SparseMat KNNCorresponder::find( const KDTree& kdt) const
     for ( size_t i = 0; i < n; ++i)
     {
         kdt.findn( _qry.row(i), K, &kverts[0], &sqdis[0]);  // Find the k nearest points on the target for query point i
-        const Eigen::Vector3f n = _qry.row(i).tail<3>();    // Normal for query point i
+        const Vec3f n = _qry.row(i).tail<3>();    // Normal for query point i
 
         for ( size_t k = 0; k < K; ++k)
         {

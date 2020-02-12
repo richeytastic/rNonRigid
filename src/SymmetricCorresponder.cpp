@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
  ************************************************************************/
 
 #include <SymmetricCorresponder.h>
-#include <FeaturesCalculate.h>
 #include <cassert>
 using rNonRigid::SymmetricCorresponder;
 using rNonRigid::KDTree;
@@ -24,41 +23,64 @@ using rNonRigid::SparseMat;
 using rNonRigid::FeatMat;
 using rNonRigid::FlagVec;
 
-SymmetricCorresponder::SymmetricCorresponder( size_t k, float h, bool eqpp) : _k(k), _thresh(h), _eqpp(eqpp) {}
-
-
-FeatMat SymmetricCorresponder::operator()( const FeatMat& qdata, const FlagVec& qflags, const KDTree& tkdt, const FlagVec& tflags, FlagVec& cflags) const
+namespace {
+FlagVec calcFlags( const SparseMat& A, const FlagVec& I, float threshold)
 {
-    assert( qflags.size() == qdata.rows());
-    assert( tflags.size() == (int)tkdt.numPoints());
+    FlagVec F = A * I;
+    const size_t N = F.size();
+    for ( size_t i = 0; i < N; ++i)
+        F[i] = F[i] > threshold ? 1.0f : 0.0f;
+    return F;
+}   // end calcFlags
+}   // end namespace
 
-    // knnQ2T iterates over the query points and searches for correspondences on the target points
-    // knnT2Q iterates over the target points and searches for correspondences on the query points
-    KNNCorresponder knnQ2T( qdata, _k, false);         // Push query to target
-    KNNCorresponder knnT2Q( tkdt.data(), _k, false);   // Pull query to target
 
-    // For Q vertices in the query set, and T vertices in the target set
-    SparseMat A = knnQ2T.find( tkdt);   // Affinity matrix Q x T (not row normalised)
-    const KDTree qkdt( qdata);
-    SparseMat B = knnT2Q.find( qkdt);   // Affinity matrix T x Q (not row normalised)
+SymmetricCorresponder::SymmetricCorresponder( size_t k, float h, bool eqpp)
+    : _k(k), _thresh(h), _eqpp(eqpp)
+{
+    assert( h >= 0.0f);
+    assert( h <= 1.0f);
+}   // end ctor
 
-    assert( A.rows() == B.cols());
-    assert( A.cols() == B.rows());
 
-    // A and B are not row normalised, but normalised versions are needed for setting the per affinity matrix flags.
-    SparseMat Anorm = A;
-    SparseMat Bnorm = B;
-    normaliseRows( Anorm);
-    normaliseRows( Bnorm);
+FeatMat SymmetricCorresponder::operator()( const KDTree& F, const FlagVec& fF,
+                                           const KDTree& T, const FlagVec& fT,
+                                           FlagVec *fC) const
+{
+    //assert( fF.size() == (int)F.numPoints());
+    //assert( fT.size() == (int)T.numPoints());
 
-    // Get the flags per individual affinity matrix using the input flags to both the query and target
-    // sets to mask which of the common points we will use for generating new correspondences.
-    FlagVec flags = calcFlags( Anorm, tflags);
-    assert( flags.size() == A.rows());
-    flags = calcFlags( Bnorm, flags.cwiseProduct( qflags));
-    assert( flags.size() == A.cols());
+    // knnF2T will iterate over floating and search for correspondences on target
+    // knnT2F will iterate over target and search for correspondences on floating
+    KNNCorresponder knnF2T( F.data(), _k, false);  // Push floating to target
+    KNNCorresponder knnT2F( T.data(), _k, false);  // Pull floating to target
 
-    // If equalising the matrices then magnitudes are irrelevant so we set A and B to be the normalised versions prior to merging.
+    // For F vertices in the floating set, and T vertices in the target set
+    SparseMat A = knnF2T.find( T);   // Affinity matrix F x T (not row normalised)
+    SparseMat B = knnT2F.find( F);   // Affinity matrix T x F (not row normalised)
+
+    // A and B are not row normalised, but normalised versions
+    // are needed for setting the per affinity matrix flags.
+    SparseMat Anorm, Bnorm;
+    if ( fC || _eqpp)
+    {
+        Anorm = A;
+        Bnorm = B;
+        normaliseRows( Anorm);
+        normaliseRows( Bnorm);
+    }   // end if
+
+    FlagVec flags;
+    if ( fC)
+    {
+        // Get flags per individual affinity matrix using input flags of both floating and target
+        // sets to mask which of the common points to use for generating new correspondences.
+        flags = calcFlags( Anorm, fT, _thresh); // flags.size() == A.rows()
+        flags = calcFlags( Bnorm, flags.cwiseProduct( fF), _thresh); // flags.size() == A.cols()
+    }   // end if
+
+    // If equalising matrices then magnitudes are irrelevant so
+    // set A and B to be the normalised versions prior to merging.
     if ( _eqpp)
     {
         A = Anorm;
@@ -68,8 +90,9 @@ FeatMat SymmetricCorresponder::operator()( const FeatMat& qdata, const FlagVec& 
     A += SparseMat( B.transpose()); // Merge
     normaliseRows(A);
 
-    // Update flags and return corresponding features
-    cflags = calcFlags( A, flags, _thresh);
-    return calcFeatures( A, tkdt.data());
+    if ( fC)    // Update flags?
+        *fC = calcFlags( A, flags, _thresh);
+
+    return A * T.data();    // Return corresponding features
 }   // end operator()
 

@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,15 +36,14 @@ public:
                              float inlierThresholdWt=0.8f,
                              size_t numOutlierDiffIts=15);
 
-    // Find and return the displacement field iteration to be applied next to the set of features F.
+    // Modify the given displacement field.
     // Parameters:
-    // i    : The iteration. The display field is reset when zero.
-    // CF   : Iterative displacement 3-vector field FROM current floating positions TO fresh correspondence points.
-    // Fwts : The smoothing weights for the neighbours of the floating vertices in their initial state.
-    // iws  : N vector of inlier weights denoting how much each position displacement contributes.
-    // flgs : N vector of 1s or 0s denoting which of displacement entries to use.
-    // Returns the update displacement vector field.
-    DispMat update( size_t i, const DispMat &CF, const SmoothingWeights &Fwts, const VecXf &iws, const FlagVec &flgs);
+    // i    : The update iteration.
+    // D    : Displacement field to update.
+    // swts : The smoothing weights for the neighbours of the floating vertices in their initial state.
+    // iwts : N vector of inlier weights denoting how much each position displacement contributes.
+    // Returns the updated displacement vector field.
+    void update( size_t i, MatX3f &D, const SmoothingWeights &swts, const VecXf &iwts);
 
 private:
     const float _viscousAnnealingRate;
@@ -53,9 +52,16 @@ private:
     const size_t _numElasticStart;
     const float _inlierThresholdWt;
     const size_t _numOutlierDiffIts;
-    DispMat _prevDispField;
-    DispMat _thisDispField;
+    MatX3f _prevField;
+    MatX3f _thisField;
 };  // end class
+
+
+rNonRigid_EXPORT MatXf createWeights( const SmoothingWeights&, const VecXf&);
+
+rNonRigid_EXPORT void regularise( MatX3f&, const MatXf&, const MatXi&, size_t);
+
+rNonRigid_EXPORT void diffuseOutliers( MatX3f&, const SmoothingWeights&, const VecXf&, float, size_t);
 
 }   // end namespace
 

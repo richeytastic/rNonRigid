@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,7 +25,6 @@
 #include "SymmetricCorresponder.h"
 #include "InlierFinder.h"
 #include "ViscoElasticTransformer.h"
-//#include "/home/rich/dev/libs/Profiling.h"
 
 namespace rNonRigid {
 
@@ -56,20 +55,9 @@ public:
     // Find the non-rigid registration between F and T where points are stored row wise
     // with each row having 6 elements as X,Y,Z position and X,Y,Z normal.
     // Parameters:
-    // F                : the floating/mask set of points and normals as rows - updated to mapped position on return.
-    // H                : the floating/mask faces(triangles) with ORDERED vertex indices (into F) denoting face normal orientation.
-    // fF               : values of 1 or 0 denoting the vertices in F to use (size == rows in F)
-    // T                : the target set of points as rows.
-    // tT               : values of 1 or 0 denoting the vertices in T to use (size == rows in T)
-    void operator()( FeatMat &F, const FaceMat &H, const FlagVec &fF, const FeatMat &T, const FlagVec &fT) const;
-
-
-    /**
-     * Update feature matrix F by adding the given displacement matrix D to the first three
-     * columns, then using the topology defined by H to update the vertex normals in the
-     * last three columns.
-     */
-    static void updateFeatures( FeatMat &uF, const FaceMat& H, const DispMat &D);
+    // mask   : the floating mesh - updated to mapped position on return.
+    // target : the target mesh to which the mask will be registered.
+    void operator()( Mesh &mask, const Mesh &target) const;
 
 private:
     const size_t _smoothK;

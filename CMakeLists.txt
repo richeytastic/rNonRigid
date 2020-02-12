@@ -16,7 +16,7 @@ set( INCLUDE_FILES
     "${INCLUDE_F}.h"
     "${INCLUDE_F}/Types.h"
     "${INCLUDE_F}/InlierFinder.h"
-    "${INCLUDE_F}/FeaturesCalculate.h"
+    #"${INCLUDE_F}/FastDeformRegistration.h"
     "${INCLUDE_F}/KDTree.h"
     "${INCLUDE_F}/KNNCorresponder.h"
     "${INCLUDE_F}/KNNMap.h"
@@ -30,7 +30,7 @@ set( INCLUDE_FILES
 
 set( SRC_FILES
     ${SRC_DIR}/InlierFinder
-    ${SRC_DIR}/FeaturesCalculate
+    #${SRC_DIR}/FastDeformRegistration
     ${SRC_DIR}/KDTree
     ${SRC_DIR}/KNNCorresponder
     ${SRC_DIR}/KNNMap
@@ -39,6 +39,7 @@ set( SRC_FILES
     ${SRC_DIR}/RigidTransformer
     ${SRC_DIR}/SmoothingWeights
     ${SRC_DIR}/SymmetricCorresponder
+    ${SRC_DIR}/Types
     ${SRC_DIR}/ViscoElasticTransformer
     )
 

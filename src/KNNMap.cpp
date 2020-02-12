@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,15 +16,14 @@
  ************************************************************************/
 
 #include <KNNMap.h>
-#include <KDTree.h>
 using rNonRigid::KNNMap;
 using rNonRigid::FeatMat;
+using rNonRigid::KDTree;
 
 
-KNNMap::KNNMap( const FeatMat &qry, const FeatMat &tgt, size_t K)
+KNNMap::KNNMap( const FeatMat &qry, const KDTree &kdt, size_t K)
     : _idxs( qry.rows(), K), _sqds( qry.rows(), K)
 {
-    const KDTree kdt( tgt);
     const size_t N = qry.rows();
     std::vector<size_t> idxs(K);
     std::vector<float> sqds(K);

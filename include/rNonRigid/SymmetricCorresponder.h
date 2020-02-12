@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,14 +31,16 @@ public:
     //              so that calculated features and flags do not bias either the query or target points.
     SymmetricCorresponder( size_t k=3, float flagThresh=0.9f, bool eqPushPull=false);
 
-    // Calculate the affinity matrix A between Q and T and use this to calculate and return a set
-    // of features on T that correspond to the entries (rows) of Q. Also sets flags for these
-    // corresponding features as out parameter cflags.
-    // Q          : matrix with Q rows 6 columns.
+    // Find affinity matrix between Q and T and use to calculate and return a set of features
+    // on T corresponding to the entries (rows) of Q. Also sets flags for these corresponding
+    // features as out parameter cflags.
+    // Q          : kd-tree for the query points (has Q points)
     // Qflags     : Q vector with elements in {0,1}; only elements with 1 are used to update correspondences.
     // T          : kd-tree for the target points (has T points)
-    // Tflags     : T vector with elements in {0,1}; only elements with 1 are used to update correspondences.
-    FeatMat operator()( const FeatMat& Q, const FlagVec& Qflags, const KDTree& T, const FlagVec& Tflags, FlagVec& cflags) const;
+    // flags      : Optional vector with elements in {0,1} with entries corresponding to rows of returned matrix.
+    FeatMat operator()( const KDTree& Q, const FlagVec& Qflags,
+                        const KDTree& T, const FlagVec& Tflags,
+                        FlagVec *flags) const;
 
 private:
     size_t _k;
@@ -49,3 +51,5 @@ private:
 }   // end namespace
 
 #endif
+
+

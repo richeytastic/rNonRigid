@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,5 +21,6 @@
 #include "rNonRigid/Types.h"
 #include "rNonRigid/RigidRegistration.h"
 #include "rNonRigid/NonRigidRegistration.h"
+#include "rNonRigid/FastDeformRegistration.h"
 
 #endif

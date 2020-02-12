@@ -36,7 +36,7 @@ public:
     explicit Impl( const FeatMat& m) : _pcloud(m)
     {
         assert( m.cols() == NFEATURES);
-        _kdtree = new MyKDTree( m.cols(), _pcloud, nanoflann::KDTreeSingleIndexAdaptorParams(15));
+        _kdtree = new MyKDTree( (int)m.cols(), _pcloud, nanoflann::KDTreeSingleIndexAdaptorParams(15));
         _kdtree->buildIndex();
     }   // end ctor
 

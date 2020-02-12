@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ SmoothingWeights::SmoothingWeights( const KNNMap &kmap, const FlagVec &flgs, flo
     : _kmap(kmap), _smw( kmap.indices().rows(), kmap.indices().cols())
 {
     static const float EPS = 1e-5f;
+    static const float ONE_MINUS_EPS = 1.0f - EPS;
     const float EXP_FACTOR = -0.5f / powf( sigma, 2.0f);
     const size_t K = _smw.cols();
     const size_t N = _smw.rows();
@@ -39,11 +40,11 @@ SmoothingWeights::SmoothingWeights( const KNNMap &kmap, const FlagVec &flgs, flo
             const float dsq = kmap.sqDiffs()(i,k);      // Squared distance
             const float gwt = expf( dsq * EXP_FACTOR);  // Gaussian weight
             const int j = kmap.indices()(i,k);          // Neighbour
-            const float nflg = flgs[j];                 // Neighbour flag
+            const float nflg = flgs[j];                 // Neighbour flag (1 or 0)
 
             // Rescale weight in [EPS,1] instead of [0,1] so that nodes with an inlier weight
             // of 0 don't end up with a deformation vector having zero magnitude.
-            const float wt = (1.0f - EPS) * (nflg * gwt) + EPS;
+            const float wt = nflg * ONE_MINUS_EPS * gwt + EPS;
             _smw(i,k) = wt;
             wsum += wt;
         }   // end for

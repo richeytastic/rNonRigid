@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,11 +17,13 @@
 
 #include <ViscoElasticTransformer.h>
 #include <iostream>
+#include <iomanip>
 #include <cassert>
 using rNonRigid::ViscoElasticTransformer;
 using rNonRigid::SmoothingWeights;
 using rNonRigid::FeatMat;
-using rNonRigid::DispMat;
+using rNonRigid::MatX3f;
+using rNonRigid::MatX3f;
 using rNonRigid::FlagVec;
 using rNonRigid::MatXf;
 using rNonRigid::MatXi;
@@ -29,90 +31,91 @@ using rNonRigid::VecXf;
 using rNonRigid::Vec3f;
 
 
-namespace {
-
-// Regularise the given displacement map
-void regulariseField( DispMat &DF, const SmoothingWeights &Swts, const VecXf &iws, size_t nSteps)
+MatXf rNonRigid::createWeights( const SmoothingWeights &swts, const VecXf &iwts)
 {
-    const float EPS = 1e-5f;
-    const MatXi& nidxs = Swts.indices();    // Neighbour indices
-    const MatXf& swts = Swts.weights();     // Smoothing weights
+    static const float EPS = 1e-5f;
+    static const float ONE_MINUS_EPS = 1.0f - EPS;
+    const size_t K = swts.indices().cols();  // Number of neighbours of each vertex to iterate over
+    const size_t N = swts.indices().rows();  // Number of vertices in field
 
-    const size_t K = nidxs.cols();  // Number of neighbours of each vertex to iterate over
-    const size_t N = DF.rows();     // Number of vertices in field
+    MatXf wts(N, K+1);   // Last column contains sum of weights
+    for ( size_t i = 0; i < N; ++i)
+    {
+        float wsum = 0.0f;
+        for ( size_t k = 0; k < K; ++k) // Typically 80 or so vertices nearest to i
+        {
+            const size_t j = swts.indices()(i,k);   // Neighbour index
+            wts(i,k) = ONE_MINUS_EPS * iwts[j] * swts.weights()(i,k) + EPS;  // Rescale weight in [EPS,1]
+            wsum += wts(i,k);
+        }   // end for
+        wts(i,K) = wsum;
+    }   // end for
 
-    DispMat rDF( N, 3);
+    return wts;
+}   // end createWeights
+
+
+void rNonRigid::regularise( MatX3f &M, const MatXf &wts, const MatXi &nidxs, size_t nSteps)
+{
+    const size_t K = wts.cols() - 1;  // Number of neighbours of each vertex to iterate over
+    const size_t N = wts.rows();  // Number of vertices in field
+    MatX3f rM( N, 3);
 
     for ( size_t it = 0; it < nSteps; ++it)
     {
         for ( size_t i = 0; i < N; ++i)
         {
             Vec3f vavg = Vec3f::Zero();
-            float wsum = 0.0f;
-
-            for ( size_t k = 0; k < K; ++k)
-            {
-                const size_t j = nidxs(i,k);   // Neighbour index
-                const float wt = (1.0f - EPS) * (iws[j] * swts(i,k)) + EPS;  // Rescale weight in [EPS,1]
-                vavg += DF.row(j) * wt;
-                wsum += wt;
-            }   // end for
-
-            rDF.row(i) = vavg / wsum;
+            for ( size_t k = 0; k < K; ++k) // Typically 80 or so vertices nearest to i
+                vavg += M.row(nidxs(i,k)) * wts(i,k);
+            rM.row(i) = vavg / wts(i,K);
         }   // end for
 
-        DF = rDF;
+        M = rM;
     }   // end for
-}   // end regulariseField
+}   // end regularise
 
 
 // Outlier diffusion looks at relatively low probability vectors and averages these with their neighbours
 // to diffuse the possible error among its neighbours. Higher probability vectors are left alone.
-void diffuseOutliers( DispMat &DF, const SmoothingWeights &Swts, const VecXf &iws, float wthresh, size_t nSteps)
+void rNonRigid::diffuseOutliers( MatX3f &M, const SmoothingWeights &swts, const VecXf &iwts, float wthresh, size_t nSteps)
 {
-    const MatXi& nidxs = Swts.indices();    // Neighbour indices
-    const MatXf& swts = Swts.weights();     // Smoothing weights
-
     // Identify outliers outside of iterative loop for efficiency
-    int N = int(DF.rows());
+    int N = int(M.rows());
     std::vector<int> outliers;
     for ( int i = 0; i < N; ++i)
     {
-        if ( iws[i] <= wthresh)
+        if ( iwts[i] <= wthresh)
             outliers.push_back(i);
     }   // end for
     N = int(outliers.size());
 
-    const size_t K = nidxs.cols();
+    const size_t K = swts.indices().cols();
     for ( size_t s = 0; s < nSteps; ++s)
     {
-        const DispMat tmpDF = DF;
+        const MatX3f tmpM = M;
 
         for ( int i = 0; i < N; ++i)
         {
             const int l = outliers[i];
-            const float iw = iws[l];
+            const float iw = iwts[l];
 
             float wsum = 0.0f;
             Vec3f vavg = Vec3f::Zero();
             for ( size_t k = 0; k < K; ++k)
             {
-                const float wt = swts(l,k);
-                vavg += wt * tmpDF.row( nidxs(l,k));
+                const float wt = swts.weights()(l,k);
+                vavg += wt * tmpM.row( swts.indices()(l,k));
                 wsum += wt;
             }   // end for
 
             // The amount of the neighbouring vector directions added is in
             // proportion to the uncertainty about the direction of this vector.
-            DF.row(l) *= iw;
-            DF.row(l) += (1.0f - iw) * vavg / wsum;
+            M.row(l) *= iw;
+            M.row(l) += (1.0f - iw) * vavg / wsum;
         }   // end for
     }   // end for
 }   // end diffuseOutliers
-
-
-}   // end namespace
-
 
 
 ViscoElasticTransformer::ViscoElasticTransformer( size_t nvs, size_t nve, size_t nes, size_t nee, size_t numUpdates, float itw, size_t nodi)
@@ -123,37 +126,35 @@ ViscoElasticTransformer::ViscoElasticTransformer( size_t nvs, size_t nve, size_t
       _inlierThresholdWt( itw),
       _numOutlierDiffIts(nodi)
 {
-#ifndef NDEBUG
-    std::cout << "Viscous rate: " << _viscousAnnealingRate << " | start: " << nvs << " | end: " << nve << std::endl;
-    std::cout << "Elastic rate: " << _elasticAnnealingRate << " | start: " << nes << " | end: " << nee << std::endl;
-    std::cout << "Iterations: " << numUpdates << std::endl;
-#endif 
+    //std::cout << "ElasticAnnealingRate = " << _elasticAnnealingRate << std::endl;
 }   // end ctor
 
 
-
-DispMat ViscoElasticTransformer::update( size_t i, const DispMat &CF, const SmoothingWeights &swts, const VecXf &iws, const FlagVec &flgs)
+void ViscoElasticTransformer::update( size_t i, MatX3f &D, const SmoothingWeights &swts, const VecXf &iwts)
 {
-    assert( CF.rows() == int(swts.indices().rows()));
-    assert( CF.rows() == iws.size());
-    assert( CF.rows() == flgs.size());
+    assert( D.rows() == int(swts.indices().rows()));
+    assert( D.rows() == iwts.size());
+    assert( D.rows() == flgs.size());
 
-    if ( i == 0)    // Reset the displacement field?
-        _thisDispField = DispMat::Zero( CF.rows(), 3);
+    if ( _thisField.size() == 0)    // Reset the displacement field?
+        _thisField = MatX3f::Zero( D.rows(), 3);
+
+    const MatXf wts = createWeights( swts, iwts);
 
     const size_t numViscousIts = size_t( roundf( _numViscousStart * powf( _viscousAnnealingRate, float(i))));
     const size_t numElasticIts = size_t( roundf( _numElasticStart * powf( _elasticAnnealingRate, float(i))));
+    //std::cout << std::setw(3) << i << ") numElasticIts = " << numElasticIts << std::endl;
 
-    _prevDispField = _thisDispField;                  // Remember from previous iteration
-    DispMat rDF = CF.array().colwise() * iws.array(); // Component wise weighting by the inliers
-    regulariseField( rDF, swts, iws, numViscousIts);  // Regularise the displacement field
-    _thisDispField += rDF;                            // Viscous addition
+    _prevField = _thisField;                              // Remember from previous iteration
+    regularise( D, wts, swts.indices(), numViscousIts);   // Regularise the displacement field
+    _thisField += D;                                      // Viscous addition
 
-    regulariseField( _thisDispField, swts, iws, numElasticIts); // Regularise TOTAL deformation field for elastic effect
+    // Regularise TOTAL deformation field for elastic effect
+    regularise( _thisField, wts, swts.indices(), numElasticIts);
 
-    diffuseOutliers( _thisDispField, swts, iws, _inlierThresholdWt, _numOutlierDiffIts);
+    diffuseOutliers( _thisField, swts, iwts, _inlierThresholdWt, _numOutlierDiffIts);
 
-    return _thisDispField - _prevDispField;
+    D = _thisField - _prevField;
 }   // end update
 
 
