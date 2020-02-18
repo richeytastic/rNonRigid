@@ -34,21 +34,19 @@ VecXf InlierFinder::operator()( const FeatMat &rfA, const FeatMat &rfB, const Fl
     const size_t N = rfA.rows();
     assert( rfA.rows() == rfB.rows());
     assert( rfA.rows() == flags.size());
-    assert( rfA.cols() == rfB.cols());
 
     VecXf probs = flags;
 
-    // Calculate distance squared deltas over the 6D features. In the original implementation,
+    // Calculate distance squared deltas over the features. In the original implementation,
     // these values are repeatedly calculated within the _numIterations loop which is inefficient
     // since the values are not being updated.
     //
     // In the original implementation the squared distances are calculated over the whole 6D feature.
-    // This is replicated here. However, I am unsure if this was actually the intention since the
-    // orientation component is explicitly dealt with separately after the main iteration loop.
-    // Probably doesn't make a huge practical difference, but needs justifying nevertheless.
-    std::vector<float> l2sqs(N);
-    for ( size_t i = 0; i < N; ++i)
-        l2sqs[i] = (rfB.row(i) - rfA.row(i)).squaredNorm();
+    // However, I am unsure if this was actually the intention since the orientation component is
+    // explicitly dealt with separately after the main iteration loop. After having tested taking
+    // the difference over the whole feature versus just the position component, the empirical
+    // difference is virtually impossible to detect so the more efficient computation is used here.
+    const VecXf l2sqs = (rfB.leftCols(3) - rfA.leftCols(3)).rowwise().squaredNorm();
 
     static const double G_CONST = 1.0/sqrt(2.0 * EIGEN_PI);
     const double G_FACTOR = G_CONST * exp( -0.5 * _kappa * _kappa);
@@ -60,36 +58,30 @@ VecXf InlierFinder::operator()( const FeatMat &rfA, const FeatMat &rfB, const Fl
     {
         const double sigDen = probs.sum();
         assert( sigDen > 0.0);
-        double sigNum = 0.0;
-        for ( size_t j = 0; j < N; ++j)
-            sigNum += probs[j] * l2sqs[j];
+        const double sigNum = probs.dot(l2sqs);
 
+        // Recalc position based probabilities
         const double sigma = std::max<double>( _minSig, std::min<double>( sqrt( sigNum/sigDen), _maxSig));
+        const double expFact = -0.5 / (sigma * sigma);
         const double lambda = G_FACTOR / sigma;
-
-        // Recalc distance based probabilities
-        const double sigmaSq = sigma * sigma;
+        const double gConst = G_CONST / sigma;
         for ( size_t j = 0; j < N; ++j)
         {
-            const double p = G_CONST * exp( -0.5 * l2sqs[j] / sigmaSq) / sigma;
+            const double p = gConst * exp( expFact * l2sqs[j]);
             probs[j] *= float(p / (p + lambda));
         }   // end for
     }   // end for
 
+    // Decrease weights the less congruent the surface normals are?
     if ( _useOrientation)
     {
-        float avgOrientationInlierWeight = 0.0f;    // For warning when too low (may mean normals are flipped)
-        for ( size_t i = 0; i < N; ++i)
-        {
-            const float dp = rfA.row(i).tail<3>().dot( rfB.row(i).tail<3>());
-            const float p = std::min( 1.0f, 0.5f + dp / 2.0f); // Rescale to be in [0,1]
-            avgOrientationInlierWeight += p;
-            probs[i] *= p;
-        }   // end for
-
-        avgOrientationInlierWeight /= N;
-        if ( avgOrientationInlierWeight < 0.5f)
+        static const float EPS = 1e-6f;
+        static const float ONE_MINUS_EPS = 1.0f - EPS;
+        // Scale the dot products of the respective normals to be in [EPS, 1.0f]
+        const VecXf d = ONE_MINUS_EPS * (0.5f * (rfA.rightCols(3).array() * rfB.rightCols(3).array()).rowwise().sum() + 0.5f) + EPS;
+        if ( (d.sum() / N) < 0.5f)
             std::cerr << "[WARNING] rNonRigid::InlierFinder: Very low inlier weights due to surface normals." << std::endl;
+        probs = probs.array() * d.array();
     }   // end if
 
     return probs;

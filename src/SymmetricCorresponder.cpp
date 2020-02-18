@@ -18,9 +18,8 @@
 #include <SymmetricCorresponder.h>
 #include <cassert>
 using rNonRigid::SymmetricCorresponder;
-using rNonRigid::KDTree;
+using rNonRigid::K3Tree;
 using rNonRigid::SparseMat;
-using rNonRigid::FeatMat;
 using rNonRigid::FlagVec;
 
 namespace {
@@ -43,9 +42,9 @@ SymmetricCorresponder::SymmetricCorresponder( size_t k, float h, bool eqpp)
 }   // end ctor
 
 
-FeatMat SymmetricCorresponder::operator()( const KDTree& F, const FlagVec& fF,
-                                           const KDTree& T, const FlagVec& fT,
-                                           FlagVec *fC) const
+SparseMat SymmetricCorresponder::operator()( const K3Tree& F, const FlagVec& fF,
+                                             const K3Tree& T, const FlagVec& fT,
+                                             FlagVec *fC) const
 {
     //assert( fF.size() == (int)F.numPoints());
     //assert( fT.size() == (int)T.numPoints());
@@ -93,6 +92,6 @@ FeatMat SymmetricCorresponder::operator()( const KDTree& F, const FlagVec& fF,
     if ( fC)    // Update flags?
         *fC = calcFlags( A, flags, _thresh);
 
-    return A * T.data();    // Return corresponding features
+    return A;
 }   // end operator()
 

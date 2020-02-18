@@ -35,14 +35,18 @@ RigidRegistration::RigidRegistration( size_t k, float flagThresh, bool eqPushPul
 Mat4f RigidRegistration::operator()( const Mesh &mask, const Mesh &target) const
 {
     Mat4f T = Mat4f::Identity();
-    const KDTree kdT( target.features);
+
+    const MatX3f tgtPosVecs = target.features.leftCols(3);
+    const K3Tree kdT( tgtPosVecs);
     FeatMat F = mask.features;
 
     for ( size_t i = 0; i < _numUpdateIts; ++i)
     {
-        const KDTree kdF( F);
+        const MatX3f maskPosVecs = F.leftCols(3);
+        const K3Tree kdF( maskPosVecs);
         FlagVec crsFlags;   // Corresponding target features
-        const FeatMat crs = _corresponder( kdF, mask.flags, kdT, target.flags, &crsFlags);
+        const SparseMat A = _corresponder( kdF, mask.flags, kdT, target.flags, &crsFlags);
+        const FeatMat crs = A * target.features;
 
         const VecXf wts = _inlierFinder( F, crs, crsFlags); // Correspondence weightings
         T = _transformer( F, crs, wts) * T; // Update the transform

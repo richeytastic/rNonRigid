@@ -19,9 +19,9 @@
 #include <vector>
 #include <cassert>
 using rNonRigid::KNNCorresponder;
-using rNonRigid::KDTree;
+using rNonRigid::K3Tree;
 using rNonRigid::SparseMat;
-using rNonRigid::FeatMat;
+using rNonRigid::MatX3f;
 
 
 void rNonRigid::normaliseRows( SparseMat& m)
@@ -39,14 +39,14 @@ void rNonRigid::normaliseRows( SparseMat& m)
 }   // end normaliseRows
 
 
-KNNCorresponder::KNNCorresponder( const FeatMat& m, size_t k, bool doNorm) : _qry(m), _k(k), _doRowNormalise(doNorm)
+KNNCorresponder::KNNCorresponder( const MatX3f& m, size_t k, bool doNorm) : _qry(m), _k(k), _doRowNormalise(doNorm)
 {
     assert( k < size_t(m.rows()));
     assert( k >= 1);
 }   // end ctor
 
 
-SparseMat KNNCorresponder::find( const KDTree& kdt) const
+SparseMat KNNCorresponder::find( const K3Tree& kdt) const
 {
     const size_t K = _k;
     const size_t n = _qry.rows();          // # query vertices
@@ -65,14 +65,16 @@ SparseMat KNNCorresponder::find( const KDTree& kdt) const
     for ( size_t i = 0; i < n; ++i)
     {
         kdt.findn( _qry.row(i), K, &kverts[0], &sqdis[0]);  // Find the k nearest points on the target for query point i
-        const Vec3f n = _qry.row(i).tail<3>();    // Normal for query point i
+        // It was found that incorporating how agreeable the orientation is does not significantly affect
+        // the outcome so this step is removed.
+        //const Vec3f n = _qry.row(i).tail<3>();    // Normal for query point i
 
         for ( size_t k = 0; k < K; ++k)
         {
             const size_t j = kverts.at(k); // j is the vertex row on the target closest to vertex i of the query set
-            float aij = powf( sqdis[k] < EPS ? EPS : sqdis[k], -1); // Affinity weight as inverse squared distance
-            // Incorporate the orientation from the matched target vertex
-            aij *= 0.5f + n.dot( kdt.data().row(j).tail<3>()) / 2.0f; // Normalise dot product in [0,1]
+            const float aij = powf( sqdis[k] < EPS ? EPS : sqdis[k], -1); // Affinity weight as inverse squared distance
+            // Incorporate the orientation from the matched target vertex (REMOVED)
+            //aij *= 0.5f + n.dot( kdt.data().row(j).tail<3>()) / 2.0f; // Normalise dot product in [0,1]
             // Check for numerical stability since normalizing these elements later and set the entry.
             aelems[c++] = Triplet(i, j, std::max( aij, 1e-4f));
         }   // end for

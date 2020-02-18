@@ -26,14 +26,14 @@
  * Find the nearest k points (rows) on the target matrix for every point (row)
  * in the query matrix. The target and query matrices can be the same.
  */
-#include "KDTree.h"
+#include "K3Tree.h"
 
 namespace rNonRigid {
 
 class rNonRigid_EXPORT KNNMap
 {
 public:
-    KNNMap( const FeatMat &query, const KDTree &target, size_t k);
+    KNNMap( const MatX3f &query, const K3Tree &target, size_t k);
 
     const MatXi& indices() const { return _idxs;}
     const MatXf& sqDiffs() const { return _sqds;}

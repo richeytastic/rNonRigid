@@ -17,11 +17,11 @@
 
 #include <KNNMap.h>
 using rNonRigid::KNNMap;
-using rNonRigid::FeatMat;
-using rNonRigid::KDTree;
+using rNonRigid::MatX3f;
+using rNonRigid::K3Tree;
 
 
-KNNMap::KNNMap( const FeatMat &qry, const KDTree &kdt, size_t K)
+KNNMap::KNNMap( const MatX3f &qry, const K3Tree &kdt, size_t K)
     : _idxs( qry.rows(), K), _sqds( qry.rows(), K)
 {
     const size_t N = qry.rows();

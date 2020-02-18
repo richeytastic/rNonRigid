@@ -35,30 +35,27 @@ MatXf rNonRigid::createWeights( const SmoothingWeights &swts, const VecXf &iwts)
 {
     static const float EPS = 1e-5f;
     static const float ONE_MINUS_EPS = 1.0f - EPS;
-    const size_t K = swts.indices().cols();  // Number of neighbours of each vertex to iterate over
     const size_t N = swts.indices().rows();  // Number of vertices in field
+    const size_t K = swts.indices().cols();  // Number of neighbours of each vertex to iterate over
 
-    MatXf wts(N, K+1);   // Last column contains sum of weights
+    MatXf wts(N, K);
     for ( size_t i = 0; i < N; ++i)
     {
-        float wsum = 0.0f;
         for ( size_t k = 0; k < K; ++k) // Typically 80 or so vertices nearest to i
         {
             const size_t j = swts.indices()(i,k);   // Neighbour index
             wts(i,k) = ONE_MINUS_EPS * iwts[j] * swts.weights()(i,k) + EPS;  // Rescale weight in [EPS,1]
-            wsum += wts(i,k);
         }   // end for
-        wts(i,K) = wsum;
     }   // end for
 
     return wts;
 }   // end createWeights
 
 
-void rNonRigid::regularise( MatX3f &M, const MatXf &wts, const MatXi &nidxs, size_t nSteps)
+void rNonRigid::regularise( MatX3f &M, const MatXf &wts, const VecXf &wRowSums, const MatXi &nidxs, size_t nSteps)
 {
-    const size_t K = wts.cols() - 1;  // Number of neighbours of each vertex to iterate over
     const size_t N = wts.rows();  // Number of vertices in field
+    const size_t K = wts.cols() - 1;  // Number of neighbours of each vertex to iterate over
     MatX3f rM( N, 3);
 
     for ( size_t it = 0; it < nSteps; ++it)
@@ -68,7 +65,7 @@ void rNonRigid::regularise( MatX3f &M, const MatXf &wts, const MatXi &nidxs, siz
             Vec3f vavg = Vec3f::Zero();
             for ( size_t k = 0; k < K; ++k) // Typically 80 or so vertices nearest to i
                 vavg += M.row(nidxs(i,k)) * wts(i,k);
-            rM.row(i) = vavg / wts(i,K);
+            rM.row(i) = vavg / wRowSums[i];
         }   // end for
 
         M = rM;
@@ -134,23 +131,23 @@ void ViscoElasticTransformer::update( size_t i, MatX3f &D, const SmoothingWeight
 {
     assert( D.rows() == int(swts.indices().rows()));
     assert( D.rows() == iwts.size());
-    assert( D.rows() == flgs.size());
 
     if ( _thisField.size() == 0)    // Reset the displacement field?
         _thisField = MatX3f::Zero( D.rows(), 3);
 
     const MatXf wts = createWeights( swts, iwts);
+    const VecXf wRowSums = wts.rowwise().sum();
 
     const size_t numViscousIts = size_t( roundf( _numViscousStart * powf( _viscousAnnealingRate, float(i))));
     const size_t numElasticIts = size_t( roundf( _numElasticStart * powf( _elasticAnnealingRate, float(i))));
     //std::cout << std::setw(3) << i << ") numElasticIts = " << numElasticIts << std::endl;
 
-    _prevField = _thisField;                              // Remember from previous iteration
-    regularise( D, wts, swts.indices(), numViscousIts);   // Regularise the displacement field
-    _thisField += D;                                      // Viscous addition
+    _prevField = _thisField;                                        // Remember from previous iteration
+    regularise( D, wts, wRowSums, swts.indices(), numViscousIts);   // Regularise the displacement field
+    _thisField += D;                                                // Viscous addition
 
     // Regularise TOTAL deformation field for elastic effect
-    regularise( _thisField, wts, swts.indices(), numElasticIts);
+    regularise( _thisField, wts, wRowSums, swts.indices(), numElasticIts);
 
     diffuseOutliers( _thisField, swts, iwts, _inlierThresholdWt, _numOutlierDiffIts);
 

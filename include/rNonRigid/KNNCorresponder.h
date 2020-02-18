@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
  * corresponding to a given query mesh. Returns an affinity matrix of correspondences
  * with values in proportion to the inverse of the squared distances between the points.
  */
-#include "KDTree.h"
+#include "K3Tree.h"
 
 namespace rNonRigid {
 
@@ -32,7 +32,7 @@ class rNonRigid_EXPORT KNNCorresponder
 public:
     // Set the query points as the first three columns of the given matrix.
     // k is the number of nearest neighbours on the target to search for.
-    KNNCorresponder( const FeatMat& query, size_t k=3, bool doRowNormalise=true);
+    KNNCorresponder( const MatX3f& query, size_t k=3, bool doRowNormalise=true);
 
     // Return the Q x T affinity matrix where Q is the number of points in the query set
     // and T the number of points in the target set. Each entry is the inverse of the squared
@@ -41,10 +41,10 @@ public:
     // Correspondence points C can be calculated from provided target points T and the
     // returned matrix A as C = AT. That is, each point coregistered to the query set
     // is the weighted sum of points in the target set.
-    SparseMat find( const KDTree& target) const;
+    SparseMat find( const K3Tree& target) const;
 
 private:
-    const FeatMat& _qry;
+    const MatX3f& _qry;
     const size_t _k;
     const bool _doRowNormalise;
 };  // end class

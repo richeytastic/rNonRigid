@@ -59,7 +59,7 @@ private:
 
 rNonRigid_EXPORT MatXf createWeights( const SmoothingWeights&, const VecXf&);
 
-rNonRigid_EXPORT void regularise( MatX3f&, const MatXf&, const MatXi&, size_t);
+rNonRigid_EXPORT void regularise( MatX3f&, const MatXf&, const VecXf&, const MatXi&, size_t);
 
 rNonRigid_EXPORT void diffuseOutliers( MatX3f&, const SmoothingWeights&, const VecXf&, float, size_t);
 

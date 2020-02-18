@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2020 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,28 +15,27 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ************************************************************************/
 
-#include <KDTree.h>
+#include <K6Tree.h>
 #include <cassert>
 #include <nanoflann.hpp>
-using rNonRigid::KDTree;
-using rNonRigid::SurfacePoints;
+using rNonRigid::K6Tree;
+using rNonRigid::S6Points;
 using rNonRigid::FeatMat;
 using rNonRigid::FeatVec;
-using rNonRigid::NFEATURES;
 
 
 namespace {
-using MyKDTree = nanoflann::KDTreeSingleIndexAdaptor<nanoflann::L2_Simple_Adaptor<float, SurfacePoints<float> >, SurfacePoints<float>, NFEATURES>;
+using MyK6Tree = nanoflann::KDTreeSingleIndexAdaptor<nanoflann::L2_Simple_Adaptor<float, S6Points<float> >, S6Points<float>, 6>;
 }   // end namespace
 
 
-class KDTree::Impl
+class K6Tree::Impl
 {
 public:
     explicit Impl( const FeatMat& m) : _pcloud(m)
     {
-        assert( m.cols() == NFEATURES);
-        _kdtree = new MyKDTree( (int)m.cols(), _pcloud, nanoflann::KDTreeSingleIndexAdaptorParams(15));
+        assert( m.cols() == 6);
+        _kdtree = new MyK6Tree( (int)m.cols(), _pcloud, nanoflann::KDTreeSingleIndexAdaptorParams(15));
         _kdtree->buildIndex();
     }   // end ctor
 
@@ -52,12 +51,18 @@ public:
     }   // end findn
 
 private:
-    const SurfacePoints<float> _pcloud;
-    MyKDTree *_kdtree;
+    const S6Points<float> _pcloud;
+    MyK6Tree *_kdtree;
 };  // end class
 
 
-KDTree::KDTree( const FeatMat& m) : _impl( new Impl(m)) {}
-KDTree::~KDTree() { delete _impl;}
-const FeatMat& KDTree::data() const { return _impl->data();}
-size_t KDTree::findn( const FeatVec& p, size_t n, size_t *nv, float *sqd) const { return _impl->findn( p, n, nv, sqd);}
+K6Tree::K6Tree( const FeatMat& m) : _impl( new Impl(m)) {}
+
+K6Tree::~K6Tree() { delete _impl;}
+
+const FeatMat& K6Tree::data() const { return _impl->data();}
+
+size_t K6Tree::findn( const FeatVec& p, size_t n, size_t *nv, float *sqd) const
+{
+    return _impl->findn( p, n, nv, sqd);
+}   // end findn

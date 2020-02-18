@@ -18,6 +18,7 @@
 #include <NonRigidRegistration.h>
 #include <SmoothingWeights.h>
 #include <iostream>
+#include <memory>
 using rNonRigid::NonRigidRegistration;
 using rNonRigid::Mesh;
 
@@ -40,16 +41,20 @@ NonRigidRegistration::NonRigidRegistration( size_t k, float flagThresh, bool eqP
 
 void NonRigidRegistration::operator()( Mesh &mask, const Mesh &target) const
 {
-    const KDTree kdTreeTarget( target.features);
-    KDTree *kdTreeMask = new KDTree( mask.features);
+    const MatX3f tgtPosVecs = target.features.leftCols(3);
+    MatX3f maskPosVecs = mask.features.leftCols(3);
 
-    const KNNMap kmap( mask.features, *kdTreeMask, _smoothK);
+    const K3Tree kdTreeTarget( tgtPosVecs);
+    std::shared_ptr<K3Tree> kdTreeMask = std::shared_ptr<K3Tree>( new K3Tree( maskPosVecs));
+
+    const KNNMap kmap( maskPosVecs, *kdTreeMask, _smoothK);
     const SmoothingWeights smw( kmap, mask.flags, _sigmaSmooth);
 
     for ( size_t i = 0; i < _numUpdateIts; ++i)
     {
         FlagVec crsFlags; // Return corresponding features on target
-        const FeatMat crs = _corresponder( *kdTreeMask, mask.flags, kdTreeTarget, target.flags, &crsFlags);
+        const SparseMat A = _corresponder( *kdTreeMask, mask.flags, kdTreeTarget, target.flags, &crsFlags);
+        const FeatMat crs = A * target.features;
         const VecXf iwts = _inlierFinder( mask.features, crs, crsFlags); // Correspondence weights
 
         // Displacement field from current mask points to correspondence points on target
@@ -61,10 +66,9 @@ void NonRigidRegistration::operator()( Mesh &mask, const Mesh &target) const
 
         if ( i < _numUpdateIts - 1)
         {
-            delete kdTreeMask;
-            kdTreeMask = new KDTree( mask.features);    // Update for next _corresponder
+            // Update for next _corresponder
+            maskPosVecs = mask.features.leftCols(3);
+            kdTreeMask = std::shared_ptr<K3Tree>( new K3Tree( maskPosVecs));
         }   // end if
     }   // end for
-
-    delete kdTreeMask;
 }   // end operator()
