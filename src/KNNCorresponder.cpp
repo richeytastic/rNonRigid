@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,30 +16,42 @@
  ************************************************************************/
 
 #include <KNNCorresponder.h>
-#include <vector>
 #include <cassert>
 using rNonRigid::KNNCorresponder;
-using rNonRigid::K3Tree;
 using rNonRigid::SparseMat;
+using rNonRigid::K3Tree;
 using rNonRigid::MatX3f;
+using rNonRigid::VecXf;
 
 
-void rNonRigid::normaliseRows( SparseMat& m)
+namespace {
+VecXf calcRowSums( const SparseMat &m)
 {
-    const size_t N = m.rows();
-    std::vector<float> rowSums( N, 0.0f);
-
+    VecXf rowSums = VecXf::Zero( m.rows());
     for ( int i = 0; i < m.outerSize(); ++i)
         for ( SparseMat::InnerIterator it(m,i); it; ++it)
             rowSums[it.row()] += it.value();
+    return rowSums;
+}   // end calcRowSums
+}   // end namespace
 
+
+SparseMat rNonRigid::normaliseRows( const SparseMat& m)
+{
+    const VecXf rowSums = calcRowSums( m);
+    using Triplet = Eigen::Triplet<float>;
+    std::vector<Triplet> tplts;
+    tplts.reserve( m.nonZeros());
     for ( int i = 0; i < m.outerSize(); ++i)
         for ( SparseMat::InnerIterator it(m,i); it; ++it)
-            it.valueRef() = it.value() / rowSums[it.row()];
+            tplts.push_back( Triplet(it.row(), it.col(), it.value() / rowSums[it.row()]));
+    SparseMat outm( m.rows(), m.cols());
+    outm.setFromTriplets( tplts.begin(), tplts.end());
+    return outm;
 }   // end normaliseRows
 
 
-KNNCorresponder::KNNCorresponder( const MatX3f& m, size_t k, bool doNorm) : _qry(m), _k(k), _doRowNormalise(doNorm)
+KNNCorresponder::KNNCorresponder( const MatX3f &m, size_t k) : _qry(m), _k(k)
 {
     assert( k < size_t(m.rows()));
     assert( k >= 1);
@@ -64,15 +76,16 @@ SparseMat KNNCorresponder::find( const K3Tree& kdt) const
     // For each floating vertex, find the K nearest vertices on the target
     for ( size_t i = 0; i < n; ++i)
     {
-        kdt.findn( _qry.row(i), K, &kverts[0], &sqdis[0]);  // Find the k nearest points on the target for query point i
+        kdt.findn( _qry.row(i), K, &kverts[0], &sqdis[0]); // Find k nearest points on tgt for point i
+
         // It was found that incorporating how agreeable the orientation is does not significantly affect
         // the outcome so this step is removed.
         //const Vec3f n = _qry.row(i).tail<3>();    // Normal for query point i
 
         for ( size_t k = 0; k < K; ++k)
         {
-            const size_t j = kverts.at(k); // j is the vertex row on the target closest to vertex i of the query set
-            const float aij = powf( sqdis[k] < EPS ? EPS : sqdis[k], -1); // Affinity weight as inverse squared distance
+            const size_t j = kverts.at(k); // j is vertex row on target closest to vertex i of query set
+            const float aij = powf( std::max( sqdis[k], EPS), -1); // Affinity weight as inverse squared distance
             // Incorporate the orientation from the matched target vertex (REMOVED)
             //aij *= 0.5f + n.dot( kdt.data().row(j).tail<3>()) / 2.0f; // Normalise dot product in [0,1]
             // Check for numerical stability since normalizing these elements later and set the entry.
@@ -82,8 +95,5 @@ SparseMat KNNCorresponder::find( const K3Tree& kdt) const
 
     SparseMat A( n, m);
     A.setFromTriplets( aelems.begin(), aelems.end());
-    if ( _doRowNormalise)
-        normaliseRows( A);
-
     return A;
 }   // end find

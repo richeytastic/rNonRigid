@@ -15,26 +15,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ************************************************************************/
 
-#ifndef RNONRIGID_SMOOTHING_WEIGHTS_H
-#define RNONRIGID_SMOOTHING_WEIGHTS_H
+#include <NonSymmetricCorresponder.h>
+using rNonRigid::NonSymmetricCorresponder;
+using rNonRigid::SparseMat;
+using rNonRigid::K3Tree;
 
-#include "K3Tree.h"
 
-namespace rNonRigid {
+NonSymmetricCorresponder::NonSymmetricCorresponder( size_t k) : _k(k) {}
 
-class rNonRigid_EXPORT SmoothingWeights
+
+SparseMat NonSymmetricCorresponder::operator()( const MatX3f &F, const K3Tree& T) const
 {
-public:
-    SmoothingWeights( const K3Tree&, size_t K, float sigma);
+    // knnF2T will iterate over floating and search for correspondences on target
+    KNNCorresponder knnF2T( F, _k);
+    return normaliseRows( knnF2T.find( T));
+}   // end operator()
 
-    const MatXi& indices() const { return _indices;}
-    const MatXf& weights() const { return _smw;}
-
-private:
-    MatXi _indices;
-    MatXf _smw;
-};  // end class
-
-}   // end namespace
-
-#endif

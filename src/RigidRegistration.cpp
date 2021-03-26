@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,43 +16,59 @@
  ************************************************************************/
 
 #include <RigidRegistration.h>
+#include <RigidTransformer.h>
 using rNonRigid::RigidRegistration;
-using rNonRigid::Mat4f;
+using rNonRigid::MatX6f;
 using rNonRigid::Mesh;
 
-
-RigidRegistration::RigidRegistration( size_t k, float flagThresh, bool eqPushPull,
+RigidRegistration::RigidRegistration( size_t maxUpdateIts,
+                                      size_t k, float flagThresh, bool eqPushPull,
                                       float kappa, bool useOrient, size_t numInlierIts,
-                                      bool useScaling, size_t numUpdateIts)
-    : _corresponder( k, flagThresh, eqPushPull),
+                                      bool useScaling)
+    :
+      _maxUpdateIts( maxUpdateIts),
+      _corresponder( k, flagThresh, eqPushPull),
       _inlierFinder( kappa, useOrient, numInlierIts),
-      _transformer( useScaling),
-      _numUpdateIts( numUpdateIts)
+      _useScaling( useScaling)
 {
 }   // end ctor
 
 
-Mat4f RigidRegistration::operator()( const Mesh &mask, const Mesh &target) const
+namespace {
+using namespace rNonRigid;
+void _transformFeatures( MatX6f& F, const Mat4f& T)
 {
-    Mat4f T = Mat4f::Identity();
+    MatX4f fps( F.rows(), 4);
+    fps.leftCols(3) = F.leftCols(3);
+    fps.rightCols(1) = VecXf::Ones( F.rows());
+    F.leftCols(3) = (fps * T.transpose()).leftCols(3);
+    const Mat3f R = T.block<3,3>(0,0) / T(3,3);  // Rotation submatrix
+    F.rightCols(3) = F.rightCols(3) * R.transpose();
+}   // end _transformFeatures
+}   // end namespace
 
-    const MatX3f tgtPosVecs = target.features.leftCols(3);
-    const K3Tree kdT( tgtPosVecs);
-    FeatMat F = mask.features;
 
-    for ( size_t i = 0; i < _numUpdateIts; ++i)
+rNonRigid::Mat4f RigidRegistration::operator()( Mesh &flt, const Mesh &tgt, Mat4f T) const
+{
+    Mat4f nT = T;
+    T = Mat4f::Identity();
+
+    const K3Tree kdT( tgt.features.leftCols(3));
+    const RigidTransformer rgdTrans( _useScaling);
+
+    VecXf flags;  // Correspondence flags
+    for ( size_t i = 0; i < _maxUpdateIts; ++i)
     {
-        const MatX3f maskPosVecs = F.leftCols(3);
-        const K3Tree kdF( maskPosVecs);
-        FlagVec crsFlags;   // Corresponding target features
-        const SparseMat A = _corresponder( kdF, mask.flags, kdT, target.flags, &crsFlags);
-        const FeatMat crs = A * target.features;
+        T = nT * T;
+        _transformFeatures( flt.features, nT);
+        const K3Tree kdF( flt.features.leftCols(3));
 
-        const VecXf wts = _inlierFinder( F, crs, crsFlags); // Correspondence weightings
-        T = _transformer( F, crs, wts) * T; // Update the transform
-
-        // Note transform always from original to reduce error propogation
-        F = transformFeatures( mask.features, T);
+        const SparseMat A = _corresponder( kdF, kdT, flags); // F.rows() X T.rows()
+        const MatX6f crs = A * tgt.features;    // F rows
+        const VecXf wts = _inlierFinder( flt.features, crs, flags); // Correspondence weights
+        nT = rgdTrans( flt.features.leftCols(3), crs.leftCols(3), wts);  // Calc next transform
+        if ( nT.isIdentity( 1e-4f)) // Done if close to not needing another transform
+            break;
     }   // end for
 
     return T;

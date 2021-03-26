@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,20 +18,9 @@
 #include <SymmetricCorresponder.h>
 #include <cassert>
 using rNonRigid::SymmetricCorresponder;
-using rNonRigid::K3Tree;
 using rNonRigid::SparseMat;
-using rNonRigid::FlagVec;
-
-namespace {
-FlagVec calcFlags( const SparseMat& A, const FlagVec& I, float threshold)
-{
-    FlagVec F = A * I;
-    const size_t N = F.size();
-    for ( size_t i = 0; i < N; ++i)
-        F[i] = F[i] > threshold ? 1.0f : 0.0f;
-    return F;
-}   // end calcFlags
-}   // end namespace
+using rNonRigid::K3Tree;
+using rNonRigid::VecXf;
 
 
 SymmetricCorresponder::SymmetricCorresponder( size_t k, float h, bool eqpp)
@@ -42,55 +31,48 @@ SymmetricCorresponder::SymmetricCorresponder( size_t k, float h, bool eqpp)
 }   // end ctor
 
 
-SparseMat SymmetricCorresponder::operator()( const K3Tree& F, const FlagVec& fF,
-                                             const K3Tree& T, const FlagVec& fT,
-                                             FlagVec *fC) const
+namespace {
+VecXf calcFlags( const SparseMat &A, const VecXf &f, float threshold)
 {
-    //assert( fF.size() == (int)F.numPoints());
-    //assert( fT.size() == (int)T.numPoints());
+    assert( A.cols() == f.rows());
+    VecXf F = A * f;
+    for ( long i = 0; i < F.size(); ++i)
+        F[i] = F[i] > threshold ? 1.0f : 0.0f;
+    assert( F.size() == A.rows());
+    return F;
+}   // end calcFlags
+}   // end namespace
 
+
+SparseMat SymmetricCorresponder::operator()( const K3Tree& F, const K3Tree& T, VecXf &fC) const
+{
     // knnF2T will iterate over floating and search for correspondences on target
     // knnT2F will iterate over target and search for correspondences on floating
-    KNNCorresponder knnF2T( F.data(), _k, false);  // Push floating to target
-    KNNCorresponder knnT2F( T.data(), _k, false);  // Pull floating to target
+    const KNNCorresponder knnF2T( F.data(), _k);  // Push floating to target
+    const KNNCorresponder knnT2F( T.data(), _k);  // Pull floating to target
 
     // For F vertices in the floating set, and T vertices in the target set
-    SparseMat A = knnF2T.find( T);   // Affinity matrix F x T (not row normalised)
-    SparseMat B = knnT2F.find( F);   // Affinity matrix T x F (not row normalised)
+    const SparseMat A_ft = knnF2T.find( T);   // Affinity matrix F x T (not row normalised)
+    const SparseMat A_tf = knnT2F.find( F);   // Affinity matrix T x F (not row normalised)
+    const SparseMat A_ft_n = normaliseRows(A_ft);
+    const SparseMat A_tf_n = normaliseRows(A_tf);
 
-    // A and B are not row normalised, but normalised versions
-    // are needed for setting the per affinity matrix flags.
-    SparseMat Anorm, Bnorm;
-    if ( fC || _eqpp)
-    {
-        Anorm = A;
-        Bnorm = B;
-        normaliseRows( Anorm);
-        normaliseRows( Bnorm);
-    }   // end if
-
-    FlagVec flags;
-    if ( fC)
-    {
-        // Get flags per individual affinity matrix using input flags of both floating and target
-        // sets to mask which of the common points to use for generating new correspondences.
-        flags = calcFlags( Anorm, fT, _thresh); // flags.size() == A.rows()
-        flags = calcFlags( Bnorm, flags.cwiseProduct( fF), _thresh); // flags.size() == A.cols()
-    }   // end if
-
-    // If equalising matrices then magnitudes are irrelevant so
-    // set A and B to be the normalised versions prior to merging.
+    SparseMat A;
     if ( _eqpp)
     {
-        A = Anorm;
-        B = Bnorm;
+        A = normaliseRows( A_ft_n + SparseMat( A_tf_n.transpose()));
+        fC = VecXf::Ones(A.cols());
     }   // end if
+    else
+    {
+        // Check distance thresholds on each lookup independently (requires normalised)
+        fC = calcFlags( A_ft_n, VecXf::Ones(A_ft_n.cols()), _thresh);
+        fC = calcFlags( A_tf_n, fC, _thresh);
+        A = normaliseRows( A_ft + SparseMat( A_tf.transpose()));
+        assert( fC.size() == F.data().rows());
+    }   // end else
 
-    A += SparseMat( B.transpose()); // Merge
-    normaliseRows(A);
-
-    if ( fC)    // Update flags?
-        *fC = calcFlags( A, flags, _thresh);
+    fC = calcFlags( A, fC, _thresh);
 
     return A;
 }   // end operator()

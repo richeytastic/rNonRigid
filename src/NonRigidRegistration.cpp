@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,59 +16,57 @@
  ************************************************************************/
 
 #include <NonRigidRegistration.h>
+#include <ViscoElasticTransformer.h>
 #include <SmoothingWeights.h>
-#include <iostream>
 #include <memory>
 using rNonRigid::NonRigidRegistration;
 using rNonRigid::Mesh;
 
 
-NonRigidRegistration::NonRigidRegistration( size_t k, float flagThresh, bool eqPushPull,
+NonRigidRegistration::NonRigidRegistration( size_t numUpdateIts,
+                                            size_t k, float flagThresh, bool eqPushPull,
                                             float kappa, bool useOrient, size_t numInlierIts,
-                                            size_t smoothK, float sigmaS,
+                                            size_t smoothK, float smoothS,
                                             size_t nvStart, size_t nvEnd,
-                                            size_t neStart, size_t neEnd,
-                                            size_t numUpdateIts)
-    : _smoothK( smoothK),
-      _sigmaSmooth( sigmaS),
+                                            size_t neStart, size_t neEnd)
+    :
       _numUpdateIts( numUpdateIts),
+      _smoothK( smoothK), _smoothS( smoothS),
       _corresponder( k, flagThresh, eqPushPull),
       _inlierFinder( kappa, useOrient, numInlierIts),
-      _transformer( nvStart, nvEnd, neStart, neEnd, numUpdateIts)
+      _nvStart(nvStart), _nvEnd(nvEnd),
+      _neStart(neStart), _neEnd(neEnd)
 {
 }   // end ctor
 
 
-void NonRigidRegistration::operator()( Mesh &mask, const Mesh &target) const
+void NonRigidRegistration::operator()( Mesh &flt, const Mesh &tgt) const
 {
-    const MatX3f tgtPosVecs = target.features.leftCols(3);
-    MatX3f maskPosVecs = mask.features.leftCols(3);
+    // The KD-tree for the floating surface is rebuilt every iteration...
+    std::shared_ptr<K3Tree> kdF = std::shared_ptr<K3Tree>( new K3Tree( flt.features.leftCols(3)));
+    const K3Tree kdT( tgt.features.leftCols(3));  // ...while the target is unchanging.
 
-    const K3Tree kdTreeTarget( tgtPosVecs);
-    std::shared_ptr<K3Tree> kdTreeMask = std::shared_ptr<K3Tree>( new K3Tree( maskPosVecs));
+    // Only need to define the smoothing weights once for the floating surface since each vertex
+    // weight is calculated only from the distribution of locally neighbouring points and this
+    // isn't based on distance (which is updated with each iteration).
+    const SmoothingWeights smw( *kdF, _smoothK, _smoothS);
 
-    const KNNMap kmap( maskPosVecs, *kdTreeMask, _smoothK);
-    const SmoothingWeights smw( kmap, mask.flags, _sigmaSmooth);
+    ViscoElasticTransformer vetrans( smw, _nvStart, _nvEnd, _neStart, _neEnd, _numUpdateIts);
 
+    VecXf flags;  // Correspondence flags updated every iteration by the symmetric corresponder
     for ( size_t i = 0; i < _numUpdateIts; ++i)
     {
-        FlagVec crsFlags; // Return corresponding features on target
-        const SparseMat A = _corresponder( *kdTreeMask, mask.flags, kdTreeTarget, target.flags, &crsFlags);
-        const FeatMat crs = A * target.features;
-        const VecXf iwts = _inlierFinder( mask.features, crs, crsFlags); // Correspondence weights
+        const SparseMat A = _corresponder( *kdF, kdT, flags);   // F.rows() X T.rows()
+        assert( flags.size() == flt.features.rows());
+        const MatX6f crs = A * tgt.features;   // F rows
+        const VecXf wts = _inlierFinder( flt.features, crs, flags); // Correspondence weights
 
-        // Displacement field from current mask points to correspondence points on target
-        DispMat DF = crs.leftCols(3) - mask.features.leftCols(3);
-
-        // Apply visco-elastic steps to the deformation field
-        _transformer.update( i, DF, smw, iwts);
-        mask.update( DF);
+        // Displacement field from current mask points to corresponding points on tgt
+        MatX3f df = crs.leftCols(3) - flt.features.leftCols(3);
+        vetrans.update( df, wts); // Regularise, add, then relax back total deformation field.
+        flt.update( df);    // Update
 
         if ( i < _numUpdateIts - 1)
-        {
-            // Update for next _corresponder
-            maskPosVecs = mask.features.leftCols(3);
-            kdTreeMask = std::shared_ptr<K3Tree>( new K3Tree( maskPosVecs));
-        }   // end if
+            kdF = std::shared_ptr<K3Tree>( new K3Tree( flt.features.leftCols(3)));
     }   // end for
 }   // end operator()

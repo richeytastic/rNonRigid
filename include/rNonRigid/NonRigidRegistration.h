@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,13 +18,8 @@
 #ifndef RNONRIGID_NON_RIGID_REGISTRATION_H
 #define RNONRIGID_NON_RIGID_REGISTRATION_H
 
-/**
- * This implementation based on MeshMonk registration::NonRigidRegistration.
- */
-
 #include "SymmetricCorresponder.h"
 #include "InlierFinder.h"
-#include "ViscoElasticTransformer.h"
 
 namespace rNonRigid {
 
@@ -32,40 +27,41 @@ class rNonRigid_EXPORT NonRigidRegistration
 {
 public:
     // Parameters:
+    // numUpdateIts     : number of iterations required.
     // k                : KNN when looking for closest points on the opposite surface.
     // flagThresh       : affinity values higher than this make flag values 1 (all others 0).
-    // eqPushPull       : symmetric correspondence affinity matrices independently row normalised before merging.
+    // eqPushPull       : vertex affinities are normalised independently to negate distance bias.
     // kappa            : number of stddevs defining inlier range for discovered correspondences.
     // useOrient        : whether or not to use vertex normals when evaluating inlier correspondences.
-    // numInlierIts     : number of iterations over which inlier probabilities are re-calculated.
-    // smoothK          : number of vertex neighbours in the local smoothing region for each floating vertex.
-    // sigmaSmooth      : smoothing Gaussian width for the floating points.
+    // numInlierIts     : # iterations over which inlier probabilities are re-calculated.
+    // smoothK          : # vertex neighbours in local smoothing region for each floating vertex.
+    // smoothS          : smoothing Gaussian width for the floating points.
     // numViscousStart  : starting number of viscous steps when beginning transform.
     // numViscousEnd    : final number of viscous steps when finishing transform.
     // numElasticStart  : starting number of elastic steps when beginning transform.
     // numElasticEnd    : final number of elastic steps when finishing transform.
-    // numUpdateIts     : number of iterations of the update loop for recalculating/applying correspondences.
-    NonRigidRegistration( size_t k=3, float flagThresh=0.9f, bool eqPushPull=false,
+    NonRigidRegistration( size_t numUpdateIts=200,
+                          size_t k=3, float flagThresh=0.9f, bool eqPushPull=true,
                           float kappa=4.0f, bool useOrient=true, size_t numInlierIts=10,
-                          size_t smoothK=80, float sigmaSmooth=3.0f,
+                          size_t smoothK=80, float smoothS=3.0f,
                           size_t numViscousStart=100, size_t numViscousEnd=1,
-                          size_t numElasticStart=100, size_t numElasticEnd=1,
-                          size_t numUpdateIts=200);
+                          size_t numElasticStart=100, size_t numElasticEnd=1);
 
-    // Find the non-rigid registration between F and T where points are stored row wise
-    // with each row having 6 elements as X,Y,Z position and X,Y,Z normal.
-    // Parameters:
-    // mask   : the floating mesh - updated to mapped position on return.
-    // target : the target mesh to which the mask will be registered.
-    void operator()( Mesh &mask, const Mesh &target) const;
+    // Find the non-rigid registration between F and T where points are stored row
+    // wise with each row having 6 elements as X,Y,Z position and X,Y,Z normal.
+    // On return, F has its features registered to surface T.
+    // F : the floating template to map to the target.
+    // T : the target to which the floating template is mapped.
+    void operator()( Mesh &F, const Mesh &T) const;
 
 private:
-    const size_t _smoothK;
-    const float _sigmaSmooth;
     const size_t _numUpdateIts;
+    const size_t _smoothK;
+    const float _smoothS;
     const SymmetricCorresponder _corresponder;
     const InlierFinder _inlierFinder;
-    mutable ViscoElasticTransformer _transformer;
+    const size_t _nvStart, _nvEnd;
+    const size_t _neStart, _neEnd;
 };  // end class
 
 }   // end namespace

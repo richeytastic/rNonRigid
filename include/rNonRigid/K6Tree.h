@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,11 +27,11 @@ class rNonRigid_EXPORT K6Tree
 public:
     // Create a K6-tree from the given matrix where the number of rows equate
     // to points and the columns are the coordinates of the vertices.
-    explicit K6Tree( const FeatMat&);
+    explicit K6Tree( const MatX6f&);
     ~K6Tree();
 
     // Returns the matrix passed in to the constructor.
-    const FeatMat& data() const;
+    const MatX6f& data() const;
 
     // Returns the number of points in the set.
     inline size_t numPoints() const { return (size_t)data().rows();}
@@ -53,14 +53,14 @@ template <typename T>
 class S6Points
 {
 public:
-    S6Points( const FeatMat& m) : _m(m) {}
+    S6Points( const MatX6f& m) : _m(m) {}
     inline size_t kdtree_get_point_count() const { return (size_t)_m.rows();}
     inline T kdtree_get_pt( const size_t idx, int dim) const { return _m((int)idx, dim);}
     template <class BBOX>
     inline bool kdtree_get_bbox( BBOX&) const { return false;}
-    const FeatMat& model() const { return _m;}
+    const MatX6f& model() const { return _m;}
 private:
-    const FeatMat &_m;
+    const MatX6f _m;
 };  // end class
 
 }   // end namespace

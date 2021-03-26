@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,14 +18,8 @@
 #ifndef RNONRIGID_RIGID_REGISTRATION_H
 #define RNONRIGID_RIGID_REGISTRATION_H
 
-/**
- * This implementation based on MeshMonk registration::RigidRegistration.
- * Non-symmetric correspondence is not implemented.
- */
-
 #include "SymmetricCorresponder.h"
 #include "InlierFinder.h"
-#include "RigidTransformer.h"
 
 namespace rNonRigid {
 
@@ -33,30 +27,29 @@ class rNonRigid_EXPORT RigidRegistration
 {
 public:
     // Parameters:
+    // maxUpdateIts : max iterations before halting regardless of if registration reached.
     // k            : KNN when looking for closest points on the opposite surface.
-    // flagThresh   : affinity values higher than this make flag values 1 (all others 0).
-    // eqPushPull   : symmetric correspondence affinity matrices independently row normalised before merging.
+    // flagThresh   : vertex affinity values higher than this make flag values 1 (all others 0).
+    // eqPushPull   : vertex affinities are normalised independently to negate distance bias.
     // kappa        : number of stddevs defining inlier range for discovered correspondences.
     // useOrient    : whether or not to use vertex normals when evaluating inlier correspondences.
     // numInlierIts : number of iterations over which inlier probabilities are re-calculated.
     // useScaling   : transform matrix generated per aligning iteration includes scaling.
-    // numUpdateIts : number of iterations of the update loop for recalculating/applying correspondences.
-    RigidRegistration( size_t k=3, float flagThresh=0.9f, bool eqPushPull=false,
+    RigidRegistration( size_t maxUpdateIts=200,
+                       size_t k=3, float flagThresh=0.9f, bool eqPushPull=true,
                        float kappa=4.0f, bool useOrient=true, size_t numInlierIts=10, 
-                       bool useScaling=true, size_t numUpdateIts=20);
+                       bool useScaling=true);
 
-    // Find the rigid registration between mask and target.
-    // Returns the transformation matrix that should be applied to the mask.
-    // Parameters:
-    // mask     : the floating mesh for which a transform to the target will be found.
-    // target   : the target mesh to which the mask will be registered.
-    Mat4f operator()( const Mesh &mask, const Mesh &target) const;
+    // Apply the rigid registration to map mask to target.
+    // Optionally provide an initial mask transform.
+    // Returns the transform that was applied to mask.
+    Mat4f operator()( Mesh &mask, const Mesh &target, Mat4f T=Mat4f::Identity()) const;
 
 private:
+    const size_t _maxUpdateIts;
     const SymmetricCorresponder _corresponder;
     const InlierFinder _inlierFinder;
-    const RigidTransformer _transformer;
-    const size_t _numUpdateIts;
+    const bool _useScaling;
 };  // end class
 
 }   // end namespace

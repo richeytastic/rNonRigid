@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,9 +30,9 @@ namespace rNonRigid {
 class rNonRigid_EXPORT KNNCorresponder
 {
 public:
-    // Set the query points as the first three columns of the given matrix.
-    // k is the number of nearest neighbours on the target to search for.
-    KNNCorresponder( const MatX3f& query, size_t k=3, bool doRowNormalise=true);
+    // Query points (Q) are the rows of the given matrix with columns as X,Y,Z.
+    // Set k as the number of nearest neighbours on the target to search for.
+    KNNCorresponder( const MatX3f& Q, size_t k=3);
 
     // Return the Q x T affinity matrix where Q is the number of points in the query set
     // and T the number of points in the target set. Each entry is the inverse of the squared
@@ -46,12 +46,10 @@ public:
 private:
     const MatX3f& _qry;
     const size_t _k;
-    const bool _doRowNormalise;
 };  // end class
 
-
 // Normalise the rows of the given sparse matrix.
-rNonRigid_EXPORT void normaliseRows( SparseMat&);
+rNonRigid_EXPORT SparseMat normaliseRows( const SparseMat&);
 
 }   // end namespace
 

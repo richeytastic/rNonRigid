@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,16 +29,14 @@
 
 namespace rNonRigid {
 
-static const int NFEATURES = 6;
+using FaceMat = Eigen::Matrix<int, Eigen::Dynamic, 3>;  // M x 3 integers of vertex indices per face
+using MatX6f = Eigen::Matrix<float, Eigen::Dynamic, 6>; // N x 6 features matrix
+using MatX4f = Eigen::Matrix<float, Eigen::Dynamic, 4>; // For homogeneous matrix multiplication
+using MatX3f = Eigen::Matrix<float, Eigen::Dynamic, 3>; // Displacement field of vector deltas (xyz)
 
-using FeatMat = Eigen::Matrix<float, Eigen::Dynamic, NFEATURES>; // N x 6 features matrix
-using FaceMat = Eigen::Matrix<int, Eigen::Dynamic, 3>;      // M x 3 integers giving vertices indices per face
-using DispMat = Eigen::Matrix<float, Eigen::Dynamic, 3>;    // Displacement field of vector deltas (xyz)
-using MatX3f = DispMat;
+using FeatVec = Eigen::Matrix<float, 6, 1>;         // A single feature
 
-using FeatVec = Eigen::Matrix<float, NFEATURES, 1>;         // A single feature in NFEATURES space
-using FlagVec = Eigen::VectorXf;                    // Dynamic length vector of floats with values either 1 or 0
-
+using Vec3i = Eigen::Vector3i;
 using Vec3f = Eigen::Vector3f;                      // Point in 3 space
 using Mat3f = Eigen::Matrix3f;                      // 3x3 matrix (for cross variance)
 using Vec4f = Eigen::Vector4f;                      // Point in 4 space
@@ -51,17 +49,32 @@ using SparseMat = Eigen::SparseMatrix<float>;
 
 struct rNonRigid_EXPORT Mesh
 {
-    FeatMat features;   // Features (vertices and normals) per row
-    FaceMat topology;   // Face connectivity as row indices into features
-    FlagVec flags;      // Features (vertices) to use as 1's or 0's (flags.size() == features.rows())
-    void update( const DispMat&);   // Calls rNonRigid::updateFeatures
+    Mesh() {}
+    explicit Mesh( size_t n) : features(n,6) {}
+
+    MatX6f features;   // Features (vertices and normals) per row
+    FaceMat topology;  // Face connectivity as row indices into features
+
+    void refreshNormals();
+
+    void update( const MatX3f&);    // Calls rNonRigid::updateFeatures
+
+    // Return a set of features by adding given displacement field to this mesh's features.
+    MatX6f makeFeatures( const MatX3f&) const;
 };  // end Mesh
 
 /**
- * Add DispMat to the first three columns (position) of FeatMat, then
+ * Add MatX3f to the first three columns (position) of MatX6f, then
  * update vertex normals in last three columns using the topology.
  */
-rNonRigid_EXPORT void updateFeatures( FeatMat&, const FaceMat&, const DispMat&);
+rNonRigid_EXPORT void updateFeatures( MatX6f&, const FaceMat&, const MatX3f&);
+
+/**
+ * Transform matrix M by T where the first three columns of M should
+ * be the X,Y,Z coordinates of the row positions. The remaining
+ * columns can be anything invariant to affine transform.
+ */
+rNonRigid_EXPORT void transform( MatXf &M, const Mat4f& T);
 
 }   // end namespace
 

@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ public:
     inline bool kdtree_get_bbox( BBOX&) const { return false;}
     const MatX3f& model() const { return _m;}
 private:
-    const MatX3f &_m;
+    const MatX3f _m;
 };  // end class
 
 }   // end namespace

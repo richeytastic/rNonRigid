@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,21 +16,23 @@
  ************************************************************************/
 
 #include <SmoothingWeights.h>
-#include <cassert>
+#include <KNNMap.h>
+#include <cfloat>
 #include <cmath>
 using rNonRigid::SmoothingWeights;
-using rNonRigid::KNNMap;
-using rNonRigid::FlagVec;
+using rNonRigid::K3Tree;
 
 
-SmoothingWeights::SmoothingWeights( const KNNMap &kmap, const FlagVec &flgs, float sigma)
-    : _kmap(kmap), _smw( kmap.indices().rows(), kmap.indices().cols())
+SmoothingWeights::SmoothingWeights( const K3Tree &kdt, size_t K, float sigma)
 {
-    static const float EPS = 1e-5f;
+    const size_t N = kdt.data().rows();
+    const KNNMap kmap( kdt.data(), kdt, K);
+    _indices = kmap.indices();
+    _smw = MatXf( N,K);
+
+    static const float EPS = FLT_MIN;
     static const float ONE_MINUS_EPS = 1.0f - EPS;
-    const float EXP_FACTOR = -0.5f / powf( sigma, 2.0f);
-    const size_t K = _smw.cols();
-    const size_t N = _smw.rows();
+    const float EXP_FACTOR = -0.5f / std::pow( sigma, 2.0f);
 
     for ( size_t i = 0; i < N; ++i)
     {
@@ -38,18 +40,13 @@ SmoothingWeights::SmoothingWeights( const KNNMap &kmap, const FlagVec &flgs, flo
         for ( size_t k = 0; k < K; ++k)
         {
             const float dsq = kmap.sqDiffs()(i,k);      // Squared distance
-            const float gwt = expf( dsq * EXP_FACTOR);  // Gaussian weight
-            const int j = kmap.indices()(i,k);          // Neighbour
-            const float nflg = flgs[j];                 // Neighbour flag (1 or 0)
-
+            const float gwt = std::exp( dsq * EXP_FACTOR);  // Gaussian weight
             // Rescale weight in [EPS,1] instead of [0,1] so that nodes with an inlier weight
             // of 0 don't end up with a deformation vector having zero magnitude.
-            const float wt = nflg * ONE_MINUS_EPS * gwt + EPS;
+            const float wt = ONE_MINUS_EPS * gwt + EPS;
             _smw(i,k) = wt;
             wsum += wt;
         }   // end for
-
-        assert( wsum >= EPS);
         _smw.row(i) /= wsum;  // Normalise the row of weights
     }   // end for
 }   // end ctor

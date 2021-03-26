@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,10 +18,6 @@
 #ifndef RNONRIGID_VISCO_ELASTIC_TRANSFORMER_H
 #define RNONRIGID_VISCO_ELASTIC_TRANSFORMER_H
 
-/**
- * This implementation based on MeshMonk registration::ViscoElasticTransformer.
- */
-
 #include "SmoothingWeights.h"
 
 namespace rNonRigid {
@@ -29,39 +25,29 @@ namespace rNonRigid {
 class rNonRigid_EXPORT ViscoElasticTransformer
 {
 public:
-    // Parameters:
-    ViscoElasticTransformer( size_t numViscousStart, size_t numViscousEnd,
+    // swts : The smoothing weights for the neighbours of the floating vertices in their initial state.
+    ViscoElasticTransformer( const SmoothingWeights &swts,
+                             size_t numViscousStart, size_t numViscousEnd,
                              size_t numElasticStart, size_t numElasticEnd,
                              size_t numUpdatesTotal,
                              float inlierThresholdWt=0.8f,
                              size_t numOutlierDiffIts=15);
 
-    // Modify the given displacement field.
-    // Parameters:
-    // i    : The update iteration.
-    // D    : Displacement field to update.
-    // swts : The smoothing weights for the neighbours of the floating vertices in their initial state.
-    // iwts : N vector of inlier weights denoting how much each position displacement contributes.
-    // Returns the updated displacement vector field.
-    void update( size_t i, MatX3f &D, const SmoothingWeights &swts, const VecXf &iwts);
+    // Update the displacement field to add for the iteration.
+    // iwts : N vector of inlier weights denoting how much each displacement contributes.
+    void update( MatX3f&, const VecXf &iwts);
 
 private:
+    const SmoothingWeights &_swts;
     const float _viscousAnnealingRate;
     const float _elasticAnnealingRate;
     const size_t _numViscousStart;
     const size_t _numElasticStart;
     const float _inlierThresholdWt;
     const size_t _numOutlierDiffIts;
-    MatX3f _prevField;
-    MatX3f _thisField;
+    MatX3f _field;
+    float _i;
 };  // end class
-
-
-rNonRigid_EXPORT MatXf createWeights( const SmoothingWeights&, const VecXf&);
-
-rNonRigid_EXPORT void regularise( MatX3f&, const MatXf&, const VecXf&, const MatXi&, size_t);
-
-rNonRigid_EXPORT void diffuseOutliers( MatX3f&, const SmoothingWeights&, const VecXf&, float, size_t);
 
 }   // end namespace
 

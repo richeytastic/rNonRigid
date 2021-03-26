@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -16,10 +16,9 @@
  ************************************************************************/
 
 #include <RigidTransformer.h>
-#include <iostream>
 #include <cassert>
+#include <cfloat>
 using rNonRigid::RigidTransformer;
-using rNonRigid::FeatMat;
 using rNonRigid::Vec3f;
 using rNonRigid::Vec4f;
 using rNonRigid::VecXf;
@@ -29,29 +28,14 @@ using rNonRigid::MatXf;
 
 namespace {
 
-Vec3f findWeightedMean( const MatXf& ps, const VecXf& wts, float wsum)
+// Returns cross variance matrix (vertices stored per row for fps/cps)
+Mat3f computeCV( const MatXf& fps, const Vec3f& fwm,
+                  const MatXf& cps, const Vec3f& cwm,
+                  const VecXf& wts, float wsum)
 {
-    const size_t N = wts.size();
-    assert( N == size_t(ps.cols()));
-    Vec3f wm = Vec3f::Zero();
-    for ( size_t i = 0; i < N; ++i)
-        wm += wts[i] * ps.col(i);
-    return wm / wsum;
-}   // end findWeightedMean
-
-
-Mat3f computeCrossVariance( const MatXf& fps, const Vec3f& fwm,
-                            const MatXf& cps, const Vec3f& cwm,
-                            const VecXf& wts, float wsum)
-{
-    const size_t N = wts.size();
-    assert( N == size_t(fps.cols()));
-    assert( N == size_t(cps.cols()));
-    Mat3f cmat = Mat3f::Zero();
-    for ( size_t i = 0; i < N; ++i)
-        cmat += wts[i] * fps.col(i) * cps.col(i).transpose();
-    return cmat / wsum - fwm * cwm.transpose();
-}   // end computeCrossVariance
+    const MatXf wfps = fps.array().colwise() * wts.array();
+    return ((wfps.transpose() * cps) / wsum) - fwm * cwm.transpose();
+}   // end computeCV
 
 
 Mat4f computeQ( const Mat3f& cv)
@@ -107,23 +91,15 @@ Mat3f computeRotationMatrix( const Mat4f& Q)
 }   // end computeRotationMatrix
 
 
+// For vectors stored as rows in fps/cps
 float estimateScaleFactor( const MatXf& fps, const Vec3f& fwm,
-                           const MatXf& cps, const Vec3f& cwm,
-                           const VecXf& wts, const Mat3f& R)
+                            const MatXf& cps, const Vec3f& cwm,
+                            const VecXf& wts, const Mat3f& R)
 {
-    const size_t N = wts.size();
-    assert( N == size_t(fps.cols()));
-    assert( N == size_t(cps.cols()));
-    float num = 0.0f;
-    float den = 0.0f;
-    for ( size_t i = 0; i < N; ++i)
-    {
-        const Vec3f nfp = R * (fps.col(i) - fwm);   // Centre and rotate the floating position
-        const Vec3f ncp = cps.col(i) - cwm;         // Centre the corresponding position
-        num += wts[i] * ncp.dot(nfp);
-        den += wts[i] * nfp.dot(nfp);
-    }   // end for
-    assert( den != 0.0);
+    const MatXf cfp = (fps.rowwise() - fwm.transpose()) * R.transpose(); // Centre and rotate and weight the floating positions
+    const MatXf ccp = cps.rowwise() - cwm.transpose(); // Centre the corresponding positions
+    const float den = cfp.cwiseProduct( cfp).rowwise().sum().dot(wts) + FLT_MIN;
+    const float num = ccp.cwiseProduct( cfp).rowwise().sum().dot(wts) + FLT_MIN;
     return num/den;
 }   // end estimateScaleFactor
 
@@ -133,28 +109,19 @@ float estimateScaleFactor( const MatXf& fps, const Vec3f& fwm,
 RigidTransformer::RigidTransformer( bool us) : _useScaling(us) {}
 
 
-Mat4f RigidTransformer::operator()( const FeatMat &flt, const FeatMat &crs, const VecXf &wts) const
+Mat4f RigidTransformer::operator()( const MatX3f &flt, const MatX3f &crs, const VecXf &wts) const
 {
     assert( flt.rows() == crs.rows());
     assert( flt.rows() == wts.size());
-    assert( NFEATURES == crs.cols());
-    assert( NFEATURES == flt.cols());
-
-    // Set the position triplets to be column vectors (ignore the remaining columns)
-    MatXf fps = flt.leftCols(3).transpose();
-    MatXf cps = crs.leftCols(3).transpose();
 
     // Find the weighted mean of the positions for each set
     const float wsum = wts.sum();
-    const Vec3f fwm = findWeightedMean( fps, wts, wsum);
-    const Vec3f cwm = findWeightedMean( cps, wts, wsum);
+    const Vec3f fwm = (wts.transpose() * flt) / wsum;
+    const Vec3f cwm = (wts.transpose() * crs) / wsum;
 
     // Get the rotation, scaling, and translation components
-    const Mat3f CV = computeCrossVariance( fps, fwm, cps, cwm, wts, wsum);
-    const Mat4f Q = computeQ( CV);
-
-    const Mat3f R = computeRotationMatrix( Q);
-    const float sf = _useScaling ? estimateScaleFactor( fps, fwm, cps, cwm, wts, R) : 1.0f; // Scale factor
+    const Mat3f R = computeRotationMatrix( computeQ( computeCV( flt, fwm, crs, cwm, wts, wsum)));
+    const float sf = _useScaling ? estimateScaleFactor( flt, fwm, crs, cwm, wts, R) : 1.0f; // Scale factor
     const Vec3f t = cwm - sf * R * fwm; // Translation between centroids
 
     // Construct final transformation matrix for return
@@ -164,32 +131,3 @@ Mat4f RigidTransformer::operator()( const FeatMat &flt, const FeatMat &crs, cons
     T(3,3) = sf;                 // Scale factor in bottom right
     return T;
 }   // end operator()
-
-
-// Apply T to the features which should be 6 elements long (columns) in each row with the
-// first three elements giving a point's position, and the last three elements giving its normal.
-FeatMat rNonRigid::transformFeatures( const FeatMat& F, const Mat4f& T)
-{
-    assert( F.cols() == NFEATURES);
-    const size_t N = F.rows();
-    FeatMat W( N, NFEATURES);
-
-    const float sf = T(3,3);    // Scale factor in bottom right corner
-    Mat4f R = Mat4f::Identity();
-    R.block<3,3>(0,0) = T.block<3,3>(0,0) / sf;  // Rotation submatrix
-
-    Vec4f ipos = Vec4f::Ones();
-    Vec4f inrm = Vec4f::Ones();
-    for ( size_t i = 0; i < N; ++i)
-    {
-        ipos.head<3>() = F.block<1,3>(i,0);
-        const Vec4f opos = T * ipos;  // Transform position
-        W.block<1,3>(i,0) = opos.head<3>();
-
-        inrm.head<3>() = F.block<1,3>(i,3);
-        const Vec4f onrm = R * inrm;  // Apply rotation matrix to normal and remove scale factor
-        W.block<1,3>(i,3) = onrm.head<3>();
-    }   // end for
-
-    return W;
-}   // end transformFeatures

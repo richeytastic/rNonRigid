@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 #include <nanoflann.hpp>
 using rNonRigid::K6Tree;
 using rNonRigid::S6Points;
-using rNonRigid::FeatMat;
+using rNonRigid::MatX6f;
 using rNonRigid::FeatVec;
 
 
@@ -32,7 +32,7 @@ using MyK6Tree = nanoflann::KDTreeSingleIndexAdaptor<nanoflann::L2_Simple_Adapto
 class K6Tree::Impl
 {
 public:
-    explicit Impl( const FeatMat& m) : _pcloud(m)
+    explicit Impl( const MatX6f& m) : _pcloud(m)
     {
         assert( m.cols() == 6);
         _kdtree = new MyK6Tree( (int)m.cols(), _pcloud, nanoflann::KDTreeSingleIndexAdaptorParams(15));
@@ -41,7 +41,7 @@ public:
 
     ~Impl() { delete _kdtree;}
 
-    const FeatMat& data() const { return _pcloud.model();}
+    const MatX6f& data() const { return _pcloud.model();}
 
     size_t findn( const FeatVec& p, size_t n, size_t *nearv, float *sqdis) const
     {
@@ -56,11 +56,11 @@ private:
 };  // end class
 
 
-K6Tree::K6Tree( const FeatMat& m) : _impl( new Impl(m)) {}
+K6Tree::K6Tree( const MatX6f& m) : _impl( new Impl(m)) {}
 
 K6Tree::~K6Tree() { delete _impl;}
 
-const FeatMat& K6Tree::data() const { return _impl->data();}
+const MatX6f& K6Tree::data() const { return _impl->data();}
 
 size_t K6Tree::findn( const FeatVec& p, size_t n, size_t *nv, float *sqd) const
 {

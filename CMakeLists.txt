@@ -22,6 +22,7 @@ set( INCLUDE_FILES
     "${INCLUDE_F}/KNNCorresponder.h"
     "${INCLUDE_F}/KNNMap.h"
     "${INCLUDE_F}/NonRigidRegistration.h"
+    "${INCLUDE_F}/NonSymmetricCorresponder.h"
     "${INCLUDE_F}/RigidRegistration.h"
     "${INCLUDE_F}/RigidTransformer.h"
     "${INCLUDE_F}/SmoothingWeights.h"
@@ -37,6 +38,7 @@ set( SRC_FILES
     ${SRC_DIR}/KNNCorresponder
     ${SRC_DIR}/KNNMap
     ${SRC_DIR}/NonRigidRegistration
+    ${SRC_DIR}/NonSymmetricCorresponder
     ${SRC_DIR}/RigidRegistration
     ${SRC_DIR}/RigidTransformer
     ${SRC_DIR}/SmoothingWeights

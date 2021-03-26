@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,22 +18,22 @@
 #include <InlierFinder.h>
 #include <iostream>
 #include <cassert>
+#include <cfloat>
 #include <cmath>
 using rNonRigid::InlierFinder;
+using rNonRigid::MatX6f;
 using rNonRigid::VecXf;
-using rNonRigid::FlagVec;
-using rNonRigid::FeatMat;
 
 
 InlierFinder::InlierFinder( float k, bool uo, size_t n)
     : _kappa(k), _useOrientation(uo), _numIterations(n), _minSig( 1.0f/n), _maxSig( (float)n) {}
 
 
-VecXf InlierFinder::operator()( const FeatMat &rfA, const FeatMat &rfB, const FlagVec &flags) const
+VecXf InlierFinder::operator()( const MatX6f &rfA, const MatX6f &rfB, const VecXf &flags) const
 {
     const size_t N = rfA.rows();
-    assert( rfA.rows() == rfB.rows());
-    assert( rfA.rows() == flags.size());
+    assert( long(N) == rfB.rows());
+    assert( long(N) == flags.size());
 
     VecXf probs = flags;
 
@@ -48,27 +48,33 @@ VecXf InlierFinder::operator()( const FeatMat &rfA, const FeatMat &rfB, const Fl
     // difference is virtually impossible to detect so the more efficient computation is used here.
     const VecXf l2sqs = (rfB.leftCols(3) - rfA.leftCols(3)).rowwise().squaredNorm();
 
-    static const double G_CONST = 1.0/sqrt(2.0 * EIGEN_PI);
-    const double G_FACTOR = G_CONST * exp( -0.5 * _kappa * _kappa);
+    static const float G_CONST = 1.0f/std::sqrt(float(2.0 * EIGEN_PI));
+    const float G_FACTOR = G_CONST * std::exp( -0.5f * _kappa * _kappa);
 
     // The number of iterations is given as a magic number of 10 in the MeshMonk implementation.
     // This value is not justified in the implementation or the supplementary material so is
     // included here as a parameter for testing.
     for ( size_t i = 0; i < _numIterations; ++i)
     {
-        const double sigDen = probs.sum();
-        assert( sigDen > 0.0);
-        const double sigNum = probs.dot(l2sqs);
+        const float sigDen = probs.sum() + FLT_MIN;
+        assert( !std::isnan(sigDen));
+        const float sigNum = probs.dot(l2sqs);
+        const float ssnd = std::sqrt(sigNum/sigDen);
+        assert( !std::isnan(ssnd));
 
         // Recalc position based probabilities
-        const double sigma = std::max<double>( _minSig, std::min<double>( sqrt( sigNum/sigDen), _maxSig));
-        const double expFact = -0.5 / (sigma * sigma);
-        const double lambda = G_FACTOR / sigma;
-        const double gConst = G_CONST / sigma;
+        const float sigma = std::max( _minSig, std::min( ssnd, _maxSig));
+        const float expFact = -0.5f / (sigma * sigma);
+        assert( !std::isnan(expFact));
+        const float lambda = G_FACTOR / sigma;
+        const float gConst = G_CONST / sigma;
+
         for ( size_t j = 0; j < N; ++j)
         {
-            const double p = gConst * exp( expFact * l2sqs[j]);
+            const float p = gConst * std::exp( expFact * l2sqs[j]);
+            assert( !std::isnan(p));
             probs[j] *= float(p / (p + lambda));
+            assert( !std::isnan(probs[j]));
         }   // end for
     }   // end for
 

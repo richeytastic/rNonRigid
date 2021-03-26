@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,10 +18,6 @@
 #ifndef RNONRIGID_INLIER_FINDER_H
 #define RNONRIGID_INLIER_FINDER_H
 
-/**
- * This implementation based on MeshMonk registration::InlierDetector
- */
-
 #include "Types.h"
 
 namespace rNonRigid {
@@ -33,9 +29,9 @@ public:
 
     // Returns a vector giving the probability of each element in flt being an inlier
     // given the updated feature correspondences (crs) and flags.
-    VecXf operator()( const FeatMat &flt,      // N rows X 6 columns
-                      const FeatMat &crs,      // N rows X 6 columns
-                      const FlagVec &flags) const; // N rows
+    VecXf operator()( const MatX6f &flt,      // N rows X 6 columns
+                      const MatX6f &crs,      // N rows X 6 columns
+                      const VecXf &flags) const; // N rows
 private:
     const float _kappa;
     const bool _useOrientation;

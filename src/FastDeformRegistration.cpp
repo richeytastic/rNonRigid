@@ -76,7 +76,7 @@ void FastDeformRegistration::operator()( Mesh &mask, const Mesh &target) const
             M[j] = stepScale * VF.row(j).dot( vec);
         }   // end for
 
-        DispMat D(N, 3);
+        MatX3f D(N, 3);
 
         mask.update( D);
         if ( i < _numUpdateIts - 1)

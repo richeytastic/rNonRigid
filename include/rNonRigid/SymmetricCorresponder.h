@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2020 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,16 +31,13 @@ public:
     //              so that calculated features and flags do not bias either the query or target points.
     SymmetricCorresponder( size_t k=3, float flagThresh=0.9f, bool eqPushPull=false);
 
-    // Find and return affinity matrix A between Q and T. Should be use to calculate a set
+    // Find and return affinity matrix A between Q and T. Should be used to calculate a set
     // of features as A * T.data() corresponding to the entries of Q. Also sets flags for
-    // the correspondence features as out parameter cflags.
-    // Q          : kd-tree for the query points (has Q points)
-    // Qflags     : Q vector with elements in {0,1}; only elements with 1 are used to update correspondences.
+    // the correspondence features as out parameter flags.
+    // Q          : kd-tree for the query points.
     // T          : kd-tree for the target points (has T points)
-    // flags      : Optional vector with elements in {0,1} with entries corresponding to rows of returned matrix.
-    SparseMat operator()( const K3Tree& Q, const FlagVec& Qflags,
-                          const K3Tree& T, const FlagVec& Tflags,
-                          FlagVec *flags) const;
+    // flags      : Set as vector of {0,1} with entries corresponding to rows of returned matrix.
+    SparseMat operator()( const K3Tree& Q, const K3Tree& T, VecXf &flags) const;
 
 private:
     size_t _k;

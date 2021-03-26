@@ -1,5 +1,5 @@
 /************************************************************************
- * Copyright (C) 2019 Richard Palmer
+ * Copyright (C) 2021 Richard Palmer
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,20 +15,31 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  ************************************************************************/
 
-#include <FeaturesCalculate.h>
-#include <cassert>
-using rNonRigid::FeatMat;
-using rNonRigid::FlagVec;
-using rNonRigid::SparseMat;
+#ifndef RNONRIGID_NON_SYMMETRIC_CORRESPONDER_H
+#define RNONRIGID_NON_SYMMETRIC_CORRESPONDER_H
 
+#include "KNNCorresponder.h"
 
-FlagVec rNonRigid::calcFlags( const SparseMat& A, const FlagVec& I, float threshold)
+namespace rNonRigid {
+
+class rNonRigid_EXPORT NonSymmetricCorresponder
 {
-    assert( threshold >= 0.0f);
-    assert( threshold <= 1.0f);
-    FlagVec F = A * I;
-    const size_t N = F.size();
-    for ( size_t i = 0; i < N; ++i)
-        F[i] = F[i] > threshold ? 1.0f : 0.0f;
-    return F;
-}   // end calcFlags
+public:
+    // k : each point in F looks for k nearest neighbours on T
+    explicit NonSymmetricCorresponder( size_t k=3);
+
+    // Find and return affinity matrix A between F and T. Used to calculate a set
+    // of features as A * T.data() corresponding to the entries of F.
+    // F      : F rows by 3 columns query points (floating mask)
+    // T      : kd-tree for the target points (has T points)
+    SparseMat operator()( const MatX3f& F, const K3Tree& T) const;
+
+private:
+    size_t _k;
+};  // end class
+
+}   // end namespace
+
+#endif
+
+
