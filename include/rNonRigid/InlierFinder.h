@@ -29,8 +29,8 @@ public:
 
     // Returns a vector giving the probability of each element in flt being an inlier
     // given the updated feature correspondences (crs) and flags.
-    VecXf operator()( const MatX6f &flt,      // N rows X 6 columns
-                      const MatX6f &crs,      // N rows X 6 columns
+    VecXf operator()( const MatXf &flt,      // N rows X M columns
+                      const MatXf &crs,      // N rows X M columns
                       const VecXf &flags) const; // N rows
 private:
     const float _kappa;

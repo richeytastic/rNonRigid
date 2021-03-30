@@ -30,8 +30,8 @@ namespace {
 
 // Returns cross variance matrix (vertices stored per row for fps/cps)
 Mat3f computeCV( const MatXf& fps, const Vec3f& fwm,
-                  const MatXf& cps, const Vec3f& cwm,
-                  const VecXf& wts, float wsum)
+                 const MatXf& cps, const Vec3f& cwm,
+                 const VecXf& wts, float wsum)
 {
     const MatXf wfps = fps.array().colwise() * wts.array();
     return ((wfps.transpose() * cps) / wsum) - fwm * cwm.transpose();
@@ -93,8 +93,8 @@ Mat3f computeRotationMatrix( const Mat4f& Q)
 
 // For vectors stored as rows in fps/cps
 float estimateScaleFactor( const MatXf& fps, const Vec3f& fwm,
-                            const MatXf& cps, const Vec3f& cwm,
-                            const VecXf& wts, const Mat3f& R)
+                           const MatXf& cps, const Vec3f& cwm,
+                           const VecXf& wts, const Mat3f& R)
 {
     const MatXf cfp = (fps.rowwise() - fwm.transpose()) * R.transpose(); // Centre and rotate and weight the floating positions
     const MatXf ccp = cps.rowwise() - cwm.transpose(); // Centre the corresponding positions

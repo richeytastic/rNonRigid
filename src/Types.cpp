@@ -29,7 +29,7 @@ using rNonRigid::Vec3i;
 
 namespace {
 
-void updateNorms( MatX6f &F, const FaceMat &H)
+void updateNorms( MatXf &F, const FaceMat &H)
 {
     // Then get the area weighted norms of the faces and add to all associated vertices
     const size_t NF = H.rows();
@@ -41,65 +41,54 @@ void updateNorms( MatX6f &F, const FaceMat &H)
         const int c = vtxs[2];
 
         // Get the corresponding updated positions
-        const Vec3f vA = F.block<1,3>( a, 0);
-        const Vec3f vB = F.block<1,3>( b, 0);
-        const Vec3f vC = F.block<1,3>( c, 0);
+        const Vec3f vA = F.block<1,3>(a,0);
+        const Vec3f vB = F.block<1,3>(b,0);
+        const Vec3f vC = F.block<1,3>(c,0);
 
         // Calculate area weighted triangle norm (magnitude is twice the triangle's area)
         const Vec3f fnrm = (vB - vA).cross( vC - vB);
 
         // Add back to the associated vertices
-        F.block<1,3>(a, 3) += fnrm;
-        F.block<1,3>(b, 3) += fnrm;
-        F.block<1,3>(c, 3) += fnrm;
+        F.block<1,3>(a,3) += fnrm;
+        F.block<1,3>(b,3) += fnrm;
+        F.block<1,3>(c,3) += fnrm;
     }   // end for
 
     // Finally renormalise the vertex normals.
     const size_t N = F.rows();
     for ( size_t i = 0; i < N; ++i)
-        F.block<1,3>(i, 3).normalize();  // Normalise in place
+        F.block(i, 3, 1, 3).normalize();  // Normalise in place
 }   // end updateNorms
 
 }   // end namespace
 
 
-void rNonRigid::updateFeatures( MatX6f &F, const FaceMat &H, const MatX3f &D)
+
+void Mesh::update( const MatX3f &D)
 {
     // First update vertex positions (first three columns of F) by adding the displacement map
-    assert( D.rows() == F.rows());
-    F.leftCols(3) += D;
-    F.rightCols(3) = MatX3f::Zero(F.rows(), 3);
-    updateNorms( F, H);
-}   // end updateFeatures
+    const size_t N = features.rows();
+    assert( D.rows() == N);
+    features.leftCols<3>() += D;
+    if ( features.cols() >= 6 && topology.rows() > 0)
+    {
+        features.block(0,3,N,3) = MatX3f::Zero(N, 3);
+        updateNorms( features, topology);
+    }   // end if
+}   // end update
 
 
-void Mesh::update( const MatX3f &D) { updateFeatures( features, topology, D);}
-
-
-void Mesh::refreshNormals()
+void Mesh::transform( const Mat4f &T)
 {
-    features.rightCols(3) = MatX3f::Zero(features.rows(), 3);
-    updateNorms( features, topology);
-}   // end refreshNormals
-
-
-MatX6f Mesh::makeFeatures( const MatX3f &D) const
-{
-    assert( features.rows() == D.rows());
-    MatX6f nf( features.rows(), 6);
-    nf.leftCols(3) = features.leftCols(3) + D;
-    nf.rightCols(3) = Mat3f::Zero( features.rows(), 3);
-    updateNorms( nf, topology);
-    return nf;
-}   // end makeFeatures
-
-
-void rNonRigid::transform( MatXf &F, const Mat4f &T)
-{
-    MatX4f ft( F.rows(), 4);
-    ft.leftCols(3) = F.leftCols(3);
-    ft.rightCols(1) = VecXf::Ones(ft.rows());
-    ft = ft * T.transpose();
-    F.leftCols(3) = ft.leftCols(3);
+    const size_t N = features.rows();
+    MatX4f ft( N, 4);
+    ft.leftCols<3>() = features.leftCols<3>();
+    ft.rightCols<1>() = VecXf::Ones(N);
+    features.leftCols<3>() = (ft * T.transpose()).leftCols<3>();
+    if ( features.cols() >= 6)
+    {
+        const Mat3f R = T.block<3,3>(0,0) / T(3,3); // Rotation submatrix (with possible scaling factor)
+        features.block(0,3,N,3) = features.block(0,3,N,3) * R.transpose();
+    }   // end if
 }   // end transform
 

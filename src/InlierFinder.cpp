@@ -16,12 +16,11 @@
  ************************************************************************/
 
 #include <InlierFinder.h>
-#include <iostream>
 #include <cassert>
 #include <cfloat>
 #include <cmath>
 using rNonRigid::InlierFinder;
-using rNonRigid::MatX6f;
+using rNonRigid::MatXf;
 using rNonRigid::VecXf;
 
 
@@ -29,7 +28,7 @@ InlierFinder::InlierFinder( float k, bool uo, size_t n)
     : _kappa(k), _useOrientation(uo), _numIterations(n), _minSig( 1.0f/n), _maxSig( (float)n) {}
 
 
-VecXf InlierFinder::operator()( const MatX6f &rfA, const MatX6f &rfB, const VecXf &flags) const
+VecXf InlierFinder::operator()( const MatXf &rfA, const MatXf &rfB, const VecXf &flags) const
 {
     const size_t N = rfA.rows();
     assert( long(N) == rfB.rows());
@@ -41,12 +40,12 @@ VecXf InlierFinder::operator()( const MatX6f &rfA, const MatX6f &rfB, const VecX
     // these values are repeatedly calculated within the _numIterations loop which is inefficient
     // since the values are not being updated.
     //
-    // In the original implementation the squared distances are calculated over the whole 6D feature.
+    // In the original implementation the squared distances are calculated over the whole (6D) feature.
     // However, I am unsure if this was actually the intention since the orientation component is
     // explicitly dealt with separately after the main iteration loop. After having tested taking
     // the difference over the whole feature versus just the position component, the empirical
     // difference is virtually impossible to detect so the more efficient computation is used here.
-    const VecXf l2sqs = (rfB.leftCols(3) - rfA.leftCols(3)).rowwise().squaredNorm();
+    const VecXf l2sqs = (rfB.leftCols<3>() - rfA.leftCols<3>()).rowwise().squaredNorm();
 
     static const float G_CONST = 1.0f/std::sqrt(float(2.0 * EIGEN_PI));
     const float G_FACTOR = G_CONST * std::exp( -0.5f * _kappa * _kappa);
@@ -72,9 +71,7 @@ VecXf InlierFinder::operator()( const MatX6f &rfA, const MatX6f &rfB, const VecX
         for ( size_t j = 0; j < N; ++j)
         {
             const float p = gConst * std::exp( expFact * l2sqs[j]);
-            assert( !std::isnan(p));
-            probs[j] *= float(p / (p + lambda));
-            assert( !std::isnan(probs[j]));
+            probs[j] *= p / (p + lambda);
         }   // end for
     }   // end for
 
@@ -84,9 +81,9 @@ VecXf InlierFinder::operator()( const MatX6f &rfA, const MatX6f &rfB, const VecX
         static const float EPS = 1e-6f;
         static const float ONE_MINUS_EPS = 1.0f - EPS;
         // Scale the dot products of the respective normals to be in [EPS, 1.0f]
-        const VecXf d = ONE_MINUS_EPS * (0.5f * (rfA.rightCols(3).array() * rfB.rightCols(3).array()).rowwise().sum() + 0.5f) + EPS;
-        if ( (d.sum() / N) < 0.5f)
-            std::cerr << "[WARNING] rNonRigid::InlierFinder: Very low inlier weights due to surface normals." << std::endl;
+        const VecXf d = ONE_MINUS_EPS * (0.5f * (rfA.rightCols<3>().array() * rfB.rightCols<3>().array()).rowwise().sum() + 0.5f) + EPS;
+        //if ( (d.sum() / N) < 0.5f)
+        //    std::cerr << "[WARNING] rNonRigid::InlierFinder: Very low inlier weights due to surface normals." << std::endl;
         probs = probs.array() * d.array();
     }   // end if
 

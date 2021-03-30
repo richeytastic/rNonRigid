@@ -17,7 +17,7 @@ set( INCLUDE_FILES
     "${INCLUDE_F}/Types.h"
     "${INCLUDE_F}/InlierFinder.h"
     #"${INCLUDE_F}/FastDeformRegistration.h"
-    "${INCLUDE_F}/K6Tree.h"
+    #"${INCLUDE_F}/K6Tree.h"
     "${INCLUDE_F}/K3Tree.h"
     "${INCLUDE_F}/KNNCorresponder.h"
     "${INCLUDE_F}/KNNMap.h"
@@ -33,7 +33,7 @@ set( INCLUDE_FILES
 set( SRC_FILES
     ${SRC_DIR}/InlierFinder
     #${SRC_DIR}/FastDeformRegistration
-    ${SRC_DIR}/K6Tree
+    #${SRC_DIR}/K6Tree
     ${SRC_DIR}/K3Tree
     ${SRC_DIR}/KNNCorresponder
     ${SRC_DIR}/KNNMap

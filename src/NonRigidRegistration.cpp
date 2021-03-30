@@ -43,8 +43,8 @@ NonRigidRegistration::NonRigidRegistration( size_t numUpdateIts,
 void NonRigidRegistration::operator()( Mesh &flt, const Mesh &tgt) const
 {
     // The KD-tree for the floating surface is rebuilt every iteration...
-    std::shared_ptr<K3Tree> kdF = std::shared_ptr<K3Tree>( new K3Tree( flt.features.leftCols(3)));
-    const K3Tree kdT( tgt.features.leftCols(3));  // ...while the target is unchanging.
+    std::shared_ptr<K3Tree> kdF = std::shared_ptr<K3Tree>( new K3Tree( flt.positions()));
+    const K3Tree kdT( tgt.positions());  // ...while the target is unchanging.
 
     // Only need to define the smoothing weights once for the floating surface since each vertex
     // weight is calculated only from the distribution of locally neighbouring points and this
@@ -62,11 +62,11 @@ void NonRigidRegistration::operator()( Mesh &flt, const Mesh &tgt) const
         const VecXf wts = _inlierFinder( flt.features, crs, flags); // Correspondence weights
 
         // Displacement field from current mask points to corresponding points on tgt
-        MatX3f df = crs.leftCols(3) - flt.features.leftCols(3);
+        MatX3f df = crs.leftCols<3>() - flt.positions();
         vetrans.update( df, wts); // Regularise, add, then relax back total deformation field.
         flt.update( df);    // Update
 
         if ( i < _numUpdateIts - 1)
-            kdF = std::shared_ptr<K3Tree>( new K3Tree( flt.features.leftCols(3)));
+            kdF = std::shared_ptr<K3Tree>( new K3Tree( flt.positions()));
     }   // end for
 }   // end operator()

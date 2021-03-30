@@ -34,8 +34,6 @@ using MatX6f = Eigen::Matrix<float, Eigen::Dynamic, 6>; // N x 6 features matrix
 using MatX4f = Eigen::Matrix<float, Eigen::Dynamic, 4>; // For homogeneous matrix multiplication
 using MatX3f = Eigen::Matrix<float, Eigen::Dynamic, 3>; // Displacement field of vector deltas (xyz)
 
-using FeatVec = Eigen::Matrix<float, 6, 1>;         // A single feature
-
 using Vec3i = Eigen::Vector3i;
 using Vec3f = Eigen::Vector3f;                      // Point in 3 space
 using Mat3f = Eigen::Matrix3f;                      // 3x3 matrix (for cross variance)
@@ -47,34 +45,19 @@ using MatXi = Eigen::MatrixXi;                      // Dynamic size matrix of in
 
 using SparseMat = Eigen::SparseMatrix<float>;
 
+
 struct rNonRigid_EXPORT Mesh
 {
     Mesh() {}
-    explicit Mesh( size_t n) : features(n,6) {}
+    Mesh( size_t rows, size_t cols) : features(rows,cols) {}
 
-    MatX6f features;   // Features (vertices and normals) per row
+    MatXf features;    // Features (vertices and normals) per row
     FaceMat topology;  // Face connectivity as row indices into features
 
-    void refreshNormals();
-
-    void update( const MatX3f&);    // Calls rNonRigid::updateFeatures
-
-    // Return a set of features by adding given displacement field to this mesh's features.
-    MatX6f makeFeatures( const MatX3f&) const;
+    inline MatX3f positions() const { return features.leftCols<3>();}
+    void update( const MatX3f&);    // Update given the displacement map.
+    void transform( const Mat4f&);
 };  // end Mesh
-
-/**
- * Add MatX3f to the first three columns (position) of MatX6f, then
- * update vertex normals in last three columns using the topology.
- */
-rNonRigid_EXPORT void updateFeatures( MatX6f&, const FaceMat&, const MatX3f&);
-
-/**
- * Transform matrix M by T where the first three columns of M should
- * be the X,Y,Z coordinates of the row positions. The remaining
- * columns can be anything invariant to affine transform.
- */
-rNonRigid_EXPORT void transform( MatXf &M, const Mat4f& T);
 
 }   // end namespace
 

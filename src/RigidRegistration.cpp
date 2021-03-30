@@ -18,7 +18,7 @@
 #include <RigidRegistration.h>
 #include <RigidTransformer.h>
 using rNonRigid::RigidRegistration;
-using rNonRigid::MatX6f;
+using rNonRigid::Mat4f;
 using rNonRigid::Mesh;
 
 RigidRegistration::RigidRegistration( size_t maxUpdateIts,
@@ -34,39 +34,22 @@ RigidRegistration::RigidRegistration( size_t maxUpdateIts,
 }   // end ctor
 
 
-namespace {
-using namespace rNonRigid;
-void _transformFeatures( MatX6f& F, const Mat4f& T)
+Mat4f RigidRegistration::operator()( Mesh &flt, const Mesh &tgt, Mat4f nT) const
 {
-    MatX4f fps( F.rows(), 4);
-    fps.leftCols(3) = F.leftCols(3);
-    fps.rightCols(1) = VecXf::Ones( F.rows());
-    F.leftCols(3) = (fps * T.transpose()).leftCols(3);
-    const Mat3f R = T.block<3,3>(0,0) / T(3,3);  // Rotation submatrix
-    F.rightCols(3) = F.rightCols(3) * R.transpose();
-}   // end _transformFeatures
-}   // end namespace
-
-
-rNonRigid::Mat4f RigidRegistration::operator()( Mesh &flt, const Mesh &tgt, Mat4f T) const
-{
-    Mat4f nT = T;
-    T = Mat4f::Identity();
-
-    const K3Tree kdT( tgt.features.leftCols(3));
+    const K3Tree kdT( tgt.positions());
     const RigidTransformer rgdTrans( _useScaling);
 
+    Mat4f T = Mat4f::Identity();
     VecXf flags;  // Correspondence flags
     for ( size_t i = 0; i < _maxUpdateIts; ++i)
     {
         T = nT * T;
-        _transformFeatures( flt.features, nT);
-        const K3Tree kdF( flt.features.leftCols(3));
-
+        flt.transform( nT);
+        const K3Tree kdF( flt.positions());
         const SparseMat A = _corresponder( kdF, kdT, flags); // F.rows() X T.rows()
-        const MatX6f crs = A * tgt.features;    // F rows
+        const MatXf crs = A * tgt.features;    // F rows
         const VecXf wts = _inlierFinder( flt.features, crs, flags); // Correspondence weights
-        nT = rgdTrans( flt.features.leftCols(3), crs.leftCols(3), wts);  // Calc next transform
+        nT = rgdTrans( flt.positions(), crs.leftCols<3>(), wts);  // Calc next transform
         if ( nT.isIdentity( 1e-4f)) // Done if close to not needing another transform
             break;
     }   // end for
