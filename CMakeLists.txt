@@ -31,20 +31,20 @@ set( INCLUDE_FILES
     )
 
 set( SRC_FILES
-    ${SRC_DIR}/InlierFinder
-    #${SRC_DIR}/FastDeformRegistration
-    #${SRC_DIR}/K6Tree
-    ${SRC_DIR}/K3Tree
-    ${SRC_DIR}/KNNCorresponder
-    ${SRC_DIR}/KNNMap
-    ${SRC_DIR}/NonRigidRegistration
-    ${SRC_DIR}/NonSymmetricCorresponder
-    ${SRC_DIR}/RigidRegistration
-    ${SRC_DIR}/RigidTransformer
-    ${SRC_DIR}/SmoothingWeights
-    ${SRC_DIR}/SymmetricCorresponder
-    ${SRC_DIR}/Types
-    ${SRC_DIR}/ViscoElasticTransformer
+    "${SRC_DIR}/InlierFinder.cpp"
+    #"${SRC_DIR}/FastDeformRegistration.cpp"
+    #"${SRC_DIR}/K6Tree.cpp"
+    "${SRC_DIR}/K3Tree.cpp"
+    "${SRC_DIR}/KNNCorresponder.cpp"
+    "${SRC_DIR}/KNNMap.cpp"
+    "${SRC_DIR}/NonRigidRegistration.cpp"
+    "${SRC_DIR}/NonSymmetricCorresponder.cpp"
+    "${SRC_DIR}/RigidRegistration.cpp"
+    "${SRC_DIR}/RigidTransformer.cpp"
+    "${SRC_DIR}/SmoothingWeights.cpp"
+    "${SRC_DIR}/SymmetricCorresponder.cpp"
+    "${SRC_DIR}/Types.cpp"
+    "${SRC_DIR}/ViscoElasticTransformer.cpp"
     )
 
 add_library( ${PROJECT_NAME} ${SRC_FILES} ${INCLUDE_FILES})
